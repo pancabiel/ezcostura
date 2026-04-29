@@ -1,0 +1,39 @@
+ezcostura - Edicao Desktop
+==========================
+
+COMO USAR
+---------
+
+1. Descompacte esta pasta em qualquer lugar do PC (ex.: Documentos\ezcostura).
+2. Clique duas vezes em "Iniciar ezcostura.cmd".
+3. O navegador abrira automaticamente em http://localhost:8080.
+4. Login inicial:
+       Usuario: admin
+       Senha:   admin
+   Troque a senha apos o primeiro login.
+
+USAR DE OUTROS DISPOSITIVOS NA MESMA REDE (TABLET)
+--------------------------------------------------
+
+1. Descubra o IP do PC (Prompt de Comando -> ipconfig).
+   Algo como 192.168.0.42.
+2. No tablet, abra o navegador em http://192.168.0.42:8080
+   (mesma rede Wi-Fi do PC).
+3. O firewall do Windows pode pedir autorizacao na primeira vez.
+   Permita "redes privadas".
+
+DADOS
+-----
+
+O banco de dados fica em:
+    %APPDATA%\ezcostura\pgdata
+
+Faca BACKUP regular dessa pasta (copie/cole para pendrive ou nuvem).
+Para restaurar, basta copiar a pasta de volta para o mesmo lugar
+(com o programa fechado).
+
+PARA ENCERRAR
+-------------
+
+Feche a janela preta (Prompt) que ficou aberta. Isso encerra o
+servidor. O navegador pode ficar aberto.

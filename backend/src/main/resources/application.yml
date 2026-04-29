@@ -1,0 +1,56 @@
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: ezcostura-backend
+  flyway:
+    enabled: false  # Flyway runs manually per-tenant on startup (see MultiTenantFlywayMigrator)
+  datasource:
+    # Admin connection used for tenant discovery / schema creation.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ezcostura}
+    username: ${DB_USER:ezcostura}
+    password: ${DB_PASSWORD:ezcostura}
+    driver-class-name: org.postgresql.Driver
+
+sentry:
+  # Leave SENTRY_DSN unset to disable error reporting. Get a DSN by creating a
+  # project at https://sentry.io/ (free tier, ~5k events/month).
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:dev}
+  release: ${SENTRY_RELEASE:ezcostura-backend@0.0.1-SNAPSHOT}
+  # PII scrubbing — never ship customer data to a third party.
+  # (Sentry's wizard suggests true; we override to false for multi-tenant safety.)
+  send-default-pii: false
+  max-request-body-size: none
+  # No performance tracing; we only want errors.
+  traces-sample-rate: 0.0
+  enable-tracing: false
+  # Ship WARN+ log lines so each error event carries the surrounding log context.
+  logs:
+    enabled: true
+  # Surface SDK problems on stdout the first time we run with a real DSN.
+  debug: ${SENTRY_DEBUG:false}
+  exception-resolver-order: -2147483647
+
+ezcostura:
+  tenants:
+    # Initial tenants. In production, back this with a tenants table or admin API.
+    initial:
+      - ${INITIAL_TENANT:demo}
+  jwt:
+    # JWT_SECRET MUST be set in production (>=32 random bytes). The app fails to
+    # start with no secret. The default below is for local dev only.
+    secret: ${JWT_SECRET:dev-only-do-not-use-in-prod-dev-only-do-not-use-in-prod}
+    access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:3600}
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:1209600}
+  cors:
+    # Comma-separated list of explicit origins. No wildcards.
+    allowed-origins: ${EZCOSTURA_CORS_ORIGINS:http://localhost:5173}
+
+logging:
+  level:
+    com.ezcostura: ${LOG_LEVEL_APP:INFO}
+    org.flywaydb: INFO
+    org.springframework.security: WARN

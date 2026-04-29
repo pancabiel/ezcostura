@@ -1,0 +1,66 @@
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import SyncStatusBadge from './SyncStatusBadge';
+import { useAuthStore } from '../stores/authStore';
+
+export default function Layout() {
+  const session = useAuthStore((s) => s.session);
+  const setSession = useAuthStore((s) => s.setSession);
+  const navigate = useNavigate();
+
+  const isAdmin = session?.role === 'ADMIN';
+
+  const logout = () => {
+    setSession(null);
+    navigate('/login');
+  };
+
+  return (
+    <div className="min-h-full flex flex-col">
+      <header className="bg-slate-900 text-white px-4 md:px-6 py-3 flex items-center justify-between gap-4 shadow flex-wrap">
+        <div className="flex items-center gap-4 md:gap-6 flex-wrap">
+          <h1 className="text-xl font-semibold">ezcostura</h1>
+          <nav className="flex gap-1 flex-wrap">
+            <NavItem to="/facilitador">Facilitador</NavItem>
+            {isAdmin && <NavItem to="/gerenciador">Gerenciador</NavItem>}
+            {isAdmin && <NavItem to="/lotes">Lotes</NavItem>}
+            {isAdmin && <NavItem to="/operarios">Operários</NavItem>}
+            {isAdmin && <NavItem to="/ausencias">Ausências</NavItem>}
+            {isAdmin && <NavItem to="/relatorios">Relatórios</NavItem>}
+            {isAdmin && <NavItem to="/configuracoes/jornada">Jornada</NavItem>}
+          </nav>
+        </div>
+        <div className="flex items-center gap-3">
+          <SyncStatusBadge />
+          {session && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="hidden md:inline text-slate-300">
+                {session.username} · {session.tenantId} · {session.role}
+              </span>
+              <button onClick={logout} className="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm">
+                Sair
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+      <main className="flex-1 p-4 md:p-6">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `px-3 py-2 rounded-md text-sm transition-colors ${
+          isActive ? 'bg-slate-700' : 'hover:bg-slate-800'
+        }`
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}
