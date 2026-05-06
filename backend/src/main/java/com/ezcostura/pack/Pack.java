@@ -21,6 +21,7 @@ public class Pack implements Persistable<UUID> {
     private OffsetDateTime horario;
     private UUID alocacaoId;
     private int quantidade;
+    private String tamanho;
     private UUID registradoPor;
     private OffsetDateTime createdAt;
 
@@ -46,6 +47,9 @@ public class Pack implements Persistable<UUID> {
 
     public int getQuantidade() { return quantidade; }
     public void setQuantidade(int quantidade) { this.quantidade = quantidade; }
+
+    public String getTamanho() { return tamanho; }
+    public void setTamanho(String tamanho) { this.tamanho = tamanho; }
 
     public UUID getRegistradoPor() { return registradoPor; }
     public void setRegistradoPor(UUID registradoPor) { this.registradoPor = registradoPor; }

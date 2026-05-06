@@ -6,8 +6,8 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalTime;
 import java.util.UUID;
 
-@Table("pausas")
-public class Pausa {
+@Table("dia_especial_pausas")
+public class DiaEspecialPausa {
 
     @Id
     private UUID id;
@@ -15,18 +15,15 @@ public class Pausa {
     private LocalTime horaInicio;
     private LocalTime horaFim;
     private TipoPausa tipo;
-    /** Null = pausa padrão da jornada; preenchido = só vale para o dia da semana indicado. */
-    private Integer diaSemana;
 
-    public Pausa() {}
+    public DiaEspecialPausa() {}
 
-    public Pausa(UUID id, String nome, LocalTime horaInicio, LocalTime horaFim, TipoPausa tipo, Integer diaSemana) {
+    public DiaEspecialPausa(UUID id, String nome, LocalTime horaInicio, LocalTime horaFim, TipoPausa tipo) {
         this.id = id;
         this.nome = nome;
         this.horaInicio = horaInicio;
         this.horaFim = horaFim;
         this.tipo = tipo;
-        this.diaSemana = diaSemana;
     }
 
     public UUID getId() { return id; }
@@ -43,7 +40,4 @@ public class Pausa {
 
     public TipoPausa getTipo() { return tipo; }
     public void setTipo(TipoPausa tipo) { this.tipo = tipo; }
-
-    public Integer getDiaSemana() { return diaSemana; }
-    public void setDiaSemana(Integer diaSemana) { this.diaSemana = diaSemana; }
 }

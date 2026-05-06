@@ -21,7 +21,6 @@ public class Alocacao implements Persistable<UUID> {
     private LocalDate data;
     private LocalTime horarioInicio;
     private UUID loteId;
-    private String tamanho;
     private UUID operacaoId;
     private OffsetDateTime createdAt;
 
@@ -44,9 +43,6 @@ public class Alocacao implements Persistable<UUID> {
 
     public UUID getLoteId() { return loteId; }
     public void setLoteId(UUID loteId) { this.loteId = loteId; }
-
-    public String getTamanho() { return tamanho; }
-    public void setTamanho(String tamanho) { this.tamanho = tamanho; }
 
     public UUID getOperacaoId() { return operacaoId; }
     public void setOperacaoId(UUID operacaoId) { this.operacaoId = operacaoId; }

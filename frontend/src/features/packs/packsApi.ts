@@ -8,6 +8,10 @@ export const packsApi = {
     const { data: rows } = await api.get<PackWire[]>('/packs', { params });
     return rows;
   },
+  async listByDataRange(inicio: string, fim: string): Promise<PackWire[]> {
+    const { data: rows } = await api.get<PackWire[]>('/packs', { params: { inicio, fim } });
+    return rows;
+  },
   async create(payload: PackWire): Promise<PackWire> {
     const { data } = await api.post<PackWire>('/packs', payload);
     return data;

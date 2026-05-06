@@ -7,7 +7,6 @@ export interface AlocacaoLocal {
   data: string;          // ISO date
   horarioInicio: string; // HH:mm
   loteId: string;
-  tamanho: string;
   operacaoId: string;
   syncStatus: SyncStatus;
   updatedAt: string;
@@ -21,7 +20,6 @@ export interface AlocacaoWire {
   data: string;
   horarioInicio: string;
   loteId: string;
-  tamanho: string;
   operacaoId: string;
   createdAt?: string;
 }

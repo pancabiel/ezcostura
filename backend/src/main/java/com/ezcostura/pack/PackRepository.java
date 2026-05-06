@@ -16,6 +16,9 @@ public interface PackRepository extends CrudRepository<Pack, UUID> {
     @Query("SELECT * FROM packs WHERE operario_id = :operarioId AND data = :data ORDER BY horario")
     List<Pack> findByOperarioAndData(@Param("operarioId") UUID operarioId, @Param("data") LocalDate data);
 
+    @Query("SELECT * FROM packs WHERE data BETWEEN :inicio AND :fim ORDER BY data, operario_id, horario")
+    List<Pack> findByDataBetween(@Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+
     @Query(
       "SELECT operario_id, data, COALESCE(SUM(quantidade), 0) AS total " +
       "FROM packs WHERE data BETWEEN :inicio AND :fim " +
@@ -36,6 +39,17 @@ public interface PackRepository extends CrudRepository<Pack, UUID> {
     List<ProducaoPorLote> producaoPorLote(
         @Param("inicio") LocalDate inicio,
         @Param("fim") LocalDate fim
+    );
+
+    @Query(
+      "SELECT COALESCE(SUM(p.quantidade), 0) " +
+      "FROM packs p JOIN alocacoes a ON a.id = p.alocacao_id " +
+      "WHERE a.lote_id = :loteId AND p.tamanho = :tamanho AND a.operacao_id = :operacaoId"
+    )
+    long sumByLoteTamanhoOperacao(
+        @Param("loteId") UUID loteId,
+        @Param("tamanho") String tamanho,
+        @Param("operacaoId") UUID operacaoId
     );
 
     record ProducaoPorOperarioDia(UUID operarioId, LocalDate data, long total) {}

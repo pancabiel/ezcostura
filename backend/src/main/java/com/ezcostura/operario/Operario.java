@@ -21,6 +21,7 @@ public class Operario implements Persistable<UUID> {
     private String telefone;
     private LocalDate dataAdmissao;
     private boolean ativo;
+    private UUID jornadaId;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -46,6 +47,9 @@ public class Operario implements Persistable<UUID> {
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public UUID getJornadaId() { return jornadaId; }
+    public void setJornadaId(UUID jornadaId) { this.jornadaId = jornadaId; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

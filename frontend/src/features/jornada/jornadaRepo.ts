@@ -1,42 +1,96 @@
+import { v4 as uuid } from 'uuid';
 import { db } from '../../db/dexie';
-import type { ConfiguracaoJornadaWire } from '../../types/jornada';
-import { jornadaApi } from './jornadaApi';
+import type {
+  DiaEspecialLocal,
+  JornadaEfetiva,
+  JornadaLocal,
+  PausaWire,
+} from '../../types/jornada';
 
-const SINGLETON: 'singleton' = 'singleton';
-
-const DEFAULT_JORNADA: ConfiguracaoJornadaWire = {
-  horaInicio: '07:00',
-  horaFim: '17:00',
-  pausas: [
-    { nome: 'Café', horaInicio: '09:30', horaFim: '09:45', tipo: 'CAFE' },
-    { nome: 'Almoço', horaInicio: '12:00', horaFim: '13:00', tipo: 'ALMOCO' },
-    { nome: 'Café', horaInicio: '15:00', horaFim: '15:15', tipo: 'CAFE' },
-  ],
+export const jornadasRepo = {
+  async list(): Promise<JornadaLocal[]> {
+    const all = await db.jornadas.toArray();
+    return all.filter((j) => !j.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome));
+  },
+  async get(id: string): Promise<JornadaLocal | undefined> {
+    return db.jornadas.get(id);
+  },
+  async create(input: Omit<JornadaLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<JornadaLocal> {
+    const j: JornadaLocal = {
+      ...input,
+      id: uuid(),
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    };
+    await db.jornadas.add(j);
+    return j;
+  },
+  async update(id: string, patch: Partial<JornadaLocal>): Promise<void> {
+    const existing = await db.jornadas.get(id);
+    if (!existing) return;
+    await db.jornadas.put({
+      ...existing,
+      ...patch,
+      id,
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    });
+  },
+  async markDeleted(id: string): Promise<void> {
+    const existing = await db.jornadas.get(id);
+    if (!existing) return;
+    if (!existing.serverId) {
+      await db.jornadas.delete(id);
+      return;
+    }
+    await db.jornadas.put({
+      ...existing,
+      pendingDelete: true,
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    });
+  },
 };
 
-export const jornadaRepo = {
-  async getCached(): Promise<ConfiguracaoJornadaWire> {
-    const row = await db.jornadaCache.get(SINGLETON);
-    return row?.data ?? DEFAULT_JORNADA;
+export const diasEspeciaisRepo = {
+  async list(): Promise<DiaEspecialLocal[]> {
+    const all = await db.diasEspeciais.toArray();
+    return all.filter((d) => !d.pendingDelete).sort((a, b) => b.data.localeCompare(a.data));
   },
-
-  async refresh(): Promise<ConfiguracaoJornadaWire> {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      return this.getCached();
-    }
-    try {
-      const remote = await jornadaApi.get();
-      await db.jornadaCache.put({ id: SINGLETON, data: remote, updatedAt: new Date().toISOString() });
-      return remote;
-    } catch {
-      return this.getCached();
-    }
+  async create(input: Omit<DiaEspecialLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<DiaEspecialLocal> {
+    const d: DiaEspecialLocal = {
+      ...input,
+      id: uuid(),
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    };
+    await db.diasEspeciais.add(d);
+    return d;
   },
-
-  async save(payload: ConfiguracaoJornadaWire): Promise<ConfiguracaoJornadaWire> {
-    const saved = await jornadaApi.update(payload);
-    await db.jornadaCache.put({ id: SINGLETON, data: saved, updatedAt: new Date().toISOString() });
-    return saved;
+  async update(id: string, patch: Partial<DiaEspecialLocal>): Promise<void> {
+    const existing = await db.diasEspeciais.get(id);
+    if (!existing) return;
+    await db.diasEspeciais.put({
+      ...existing,
+      ...patch,
+      id,
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    });
+  },
+  async markDeleted(id: string): Promise<void> {
+    const existing = await db.diasEspeciais.get(id);
+    if (!existing) return;
+    if (!existing.serverId) {
+      await db.diasEspeciais.delete(id);
+      return;
+    }
+    await db.diasEspeciais.put({
+      ...existing,
+      pendingDelete: true,
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    });
   },
 };
 
@@ -47,22 +101,87 @@ export function normalizeTime(t: string): string {
 export function minutesBetween(start: string, end: string): number {
   const [sh, sm] = normalizeTime(start).split(':').map(Number);
   const [eh, em] = normalizeTime(end).split(':').map(Number);
-  return (eh * 60 + em) - (sh * 60 + sm);
+  return eh * 60 + em - (sh * 60 + sm);
 }
 
-export function jornadaWorkingMinutes(c: ConfiguracaoJornadaWire): number {
-  const total = minutesBetween(c.horaInicio, c.horaFim);
-  const pausas = c.pausas.reduce((s, p) => s + minutesBetween(p.horaInicio, p.horaFim), 0);
+export function jornadaWorkingMinutes(efetiva: { horaInicio: string; horaFim: string; pausas: { horaInicio: string; horaFim: string }[] }): number {
+  const total = minutesBetween(efetiva.horaInicio, efetiva.horaFim);
+  const pausas = efetiva.pausas.reduce((s, p) => s + minutesBetween(p.horaInicio, p.horaFim), 0);
   return Math.max(0, total - pausas);
 }
 
-export function pausaAtiva(c: ConfiguracaoJornadaWire, now: Date): { nome: string; horaFim: string } | null {
+/**
+ * Resolve a jornada efetiva de um operário em uma determinada data, considerando:
+ * 1. Dia especial cuja lista de operarioIds contém o operário (prioridade máxima);
+ * 2. Override de dia da semana na jornada do operário;
+ * 3. Horário padrão da jornada do operário.
+ */
+export function resolverJornadaEfetiva(opts: {
+  operarioId: string;
+  data: string; // ISO YYYY-MM-DD
+  jornadas: JornadaLocal[];
+  diasEspeciais: DiaEspecialLocal[];
+  jornadaIdDoOperario: string;
+}): JornadaEfetiva | null {
+  const { operarioId, data, jornadas, diasEspeciais, jornadaIdDoOperario } = opts;
+
+  const especial = diasEspeciais.find(
+    (d) => d.data === data && !d.pendingDelete && d.operarioIds.includes(operarioId),
+  );
+  if (especial) {
+    return {
+      horaInicio: normalizeTime(especial.horaInicio),
+      horaFim: normalizeTime(especial.horaFim),
+      pausas: especial.pausas.map((p) => ({
+        nome: p.nome,
+        horaInicio: normalizeTime(p.horaInicio),
+        horaFim: normalizeTime(p.horaFim),
+        tipo: p.tipo,
+      })),
+      origem: 'dia-especial',
+    };
+  }
+
+  const jornada = jornadas.find((j) => j.id === jornadaIdDoOperario && !j.pendingDelete);
+  if (!jornada) return null;
+
+  // dia da semana 0=domingo .. 6=sábado
+  const dow = new Date(data + 'T00:00:00').getDay();
+  const override = jornada.diasSemana.find((d) => d.diaSemana === dow);
+  let horaInicio = normalizeTime(jornada.horaInicio);
+  let horaFim = normalizeTime(jornada.horaFim);
+  let origem: JornadaEfetiva['origem'] = 'padrao';
+  if (override) {
+    horaInicio = normalizeTime(override.horaInicio);
+    horaFim = normalizeTime(override.horaFim);
+    origem = 'dia-semana';
+  }
+
+  // Pausas: se houver pausa específica para o dia da semana, usa só elas; senão usa as padrão (diaSemana=null).
+  const pausasDoDia = jornada.pausas.filter((p) => p.diaSemana === dow);
+  const pausasPadrao = jornada.pausas.filter((p) => p.diaSemana === null || p.diaSemana === undefined);
+  const pausasFinais: PausaWire[] = pausasDoDia.length > 0 ? pausasDoDia : pausasPadrao;
+
+  return {
+    horaInicio,
+    horaFim,
+    pausas: pausasFinais.map((p) => ({
+      nome: p.nome,
+      horaInicio: normalizeTime(p.horaInicio),
+      horaFim: normalizeTime(p.horaFim),
+      tipo: p.tipo,
+    })),
+    origem,
+  };
+}
+
+export function pausaAtiva(efetiva: JornadaEfetiva, now: Date): { nome: string; horaFim: string } | null {
   const hh = now.getHours().toString().padStart(2, '0');
   const mm = now.getMinutes().toString().padStart(2, '0');
   const cur = `${hh}:${mm}`;
-  for (const p of c.pausas) {
-    if (normalizeTime(p.horaInicio) <= cur && cur < normalizeTime(p.horaFim)) {
-      return { nome: p.nome, horaFim: normalizeTime(p.horaFim) };
+  for (const p of efetiva.pausas) {
+    if (p.horaInicio <= cur && cur < p.horaFim) {
+      return { nome: p.nome, horaFim: p.horaFim };
     }
   }
   return null;

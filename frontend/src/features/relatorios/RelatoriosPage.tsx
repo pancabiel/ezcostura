@@ -2,8 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { api } from '../../lib/axios';
 import { db } from '../../db/dexie';
-import { pullAlocacoesForDate, pullPacksForDate } from '../../services/syncService';
-import { normalizeTime } from '../jornada/jornadaRepo';
+import {
+  pullAlocacoesForDate,
+  pullAlocacoesForRange,
+  pullPacksForDate,
+  pullPacksForRange,
+} from '../../services/syncService';
+import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
+import type { JornadaEfetiva } from '../../types/jornada';
 
 interface ProducaoOperarioDia {
   operarioId: string;
@@ -49,41 +55,27 @@ function pctBar(pct: number) {
 
 function Kpi({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-md p-4">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    <div className="bg-white border border-slate-200 rounded-md p-3 sm:p-4">
+      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">{value}</p>
+      {sub && <p className="text-[11px] text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
 
-function VBars({ data, color = '#10b981' }: { data: { label: string; value: number }[]; color?: string }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
-  return (
-    <div className="flex items-end gap-1 h-48">
-      {data.map((d, i) => {
-        const h = (d.value / max) * 100;
-        return (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 min-w-0">
-            <span className="text-[10px] text-slate-500">{d.value || ''}</span>
-            <div
-              className="w-full rounded-t transition-all"
-              style={{
-                height: `${h}%`,
-                background: color,
-                minHeight: d.value > 0 ? 2 : 0,
-              }}
-              title={`${d.label}: ${d.value}`}
-            />
-            <span className="text-[10px] text-slate-500 truncate w-full text-center">{d.label}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function HBars({ data, color = '#0f766e' }: { data: { label: string; value: number }[]; color?: string }) {
+/**
+ * Gráfico de barras horizontais — funciona bem em qualquer largura, especialmente mobile.
+ * Cada linha mostra rótulo, valor numérico e barra proporcional.
+ */
+function HBars({
+  data,
+  color = '#0f766e',
+  unit = '',
+}: {
+  data: { label: string; value: number; sub?: string }[];
+  color?: string;
+  unit?: string;
+}) {
   const max = Math.max(1, ...data.map((d) => d.value));
   if (data.length === 0) return <p className="text-sm text-slate-500">Sem dados.</p>;
   return (
@@ -91,15 +83,74 @@ function HBars({ data, color = '#0f766e' }: { data: { label: string; value: numb
       {data.map((d, i) => {
         const w = (d.value / max) * 100;
         return (
-          <div key={i} className="flex items-center gap-2">
-            <span className="text-sm w-32 truncate text-slate-700">{d.label}</span>
-            <div className="flex-1 bg-slate-100 rounded-full h-3">
-              <div className="h-3 rounded-full transition-all" style={{ width: `${w}%`, background: color }} />
+          <div key={i} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="font-medium truncate text-slate-800">{d.label}</span>
+              <span className="font-mono text-slate-900 shrink-0">
+                {Number.isFinite(d.value) ? d.value : 0}{unit}
+              </span>
             </div>
-            <span className="text-sm font-mono w-12 text-right">{d.value}</span>
+            <div className="bg-slate-100 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full transition-all"
+                style={{ width: `${Math.min(100, w)}%`, background: color }}
+              />
+            </div>
+            {d.sub && <span className="text-[11px] text-slate-500">{d.sub}</span>}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Gráfico de linha do tempo — eixo X são datas, valor por barra.
+ * Para mobile, mostra apenas 14 dias mais recentes em formato horizontal scrollável,
+ * mas com altura adequada e tooltips clicáveis.
+ */
+function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: string; value: number }[]; color?: string; unit?: string }) {
+  const [active, setActive] = useState<number | null>(null);
+  const max = Math.max(1, ...data.map((d) => d.value));
+  if (data.length === 0) return <p className="text-sm text-slate-500">Sem dados.</p>;
+  return (
+    <div>
+      <div className="flex items-end gap-1 h-44 overflow-x-auto pb-1">
+        {data.map((d, i) => {
+          const h = max > 0 ? (d.value / max) * 100 : 0;
+          const isActive = active === i;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setActive(isActive ? null : i)}
+              className="flex flex-col items-center justify-end h-full gap-1 min-w-[24px] sm:min-w-[28px]"
+              title={`${d.label}: ${d.value}${unit}`}
+            >
+              <span className={`text-[10px] ${isActive ? 'text-slate-900 font-semibold' : 'text-transparent'}`}>
+                {d.value || ''}
+              </span>
+              <div
+                className="w-full rounded-t transition-all"
+                style={{
+                  height: `${h}%`,
+                  background: isActive ? '#0f766e' : color,
+                  minHeight: d.value > 0 ? 2 : 0,
+                }}
+              />
+              <span className={`text-[10px] truncate w-full text-center ${isActive ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>
+                {d.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {active !== null && data[active] && (
+        <p className="text-xs text-slate-700 mt-2">
+          <span className="font-semibold">{data[active].label}:</span>{' '}
+          <span className="font-mono">{data[active].value}{unit}</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -108,6 +159,7 @@ export default function RelatoriosPage() {
   const [inicio, setInicio] = useState(monthAgo());
   const [fim, setFim] = useState(todayISO());
   const [diaDetalhe, setDiaDetalhe] = useState(todayISO());
+  const [operarioFoco, setOperarioFoco] = useState<string>('');
   const [porOperarioDia, setPorOperarioDia] = useState<ProducaoOperarioDia[]>([]);
   const [porLote, setPorLote] = useState<ProducaoLote[]>([]);
   const [loading, setLoading] = useState(false);
@@ -115,6 +167,8 @@ export default function RelatoriosPage() {
 
   const operarios = useLiveQuery(() => db.operarios.toArray(), []) ?? [];
   const lotes = useLiveQuery(() => db.lotes.toArray(), []) ?? [];
+  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
 
   const operarioByServer = useMemo(
     () => new Map(operarios.map((o) => [o.serverId ?? o.id, o])),
@@ -127,15 +181,24 @@ export default function RelatoriosPage() {
   );
   const loteByLocal = useMemo(() => new Map(lotes.map((l) => [l.id, l])), [lotes]);
 
-  const alocacoesDia = useLiveQuery(
-    async () => db.alocacoes.where('data').equals(diaDetalhe).toArray(),
-    [diaDetalhe],
+  // Alocações e packs do período (cacheadas em Dexie após pull em batch).
+  const alocacoesPeriodo = useLiveQuery(
+    async () => (await db.alocacoes.toArray()).filter((a) => !a.pendingDelete && a.data >= inicio && a.data <= fim),
+    [inicio, fim],
   ) ?? [];
-  const packsDia = useLiveQuery(
-    async () => db.packs.where('data').equals(diaDetalhe).toArray(),
-    [diaDetalhe],
+  const packsPeriodo = useLiveQuery(
+    async () => (await db.packs.toArray()).filter((p) => !p.pendingDelete && p.data >= inicio && p.data <= fim),
+    [inicio, fim],
   ) ?? [];
-  const jornada = useLiveQuery(() => db.jornadaCache.get('singleton'), [])?.data;
+
+  const alocacoesDia = useMemo(
+    () => alocacoesPeriodo.filter((a) => a.data === diaDetalhe),
+    [alocacoesPeriodo, diaDetalhe],
+  );
+  const packsDia = useMemo(
+    () => packsPeriodo.filter((p) => p.data === diaDetalhe),
+    [packsPeriodo, diaDetalhe],
+  );
   const ausenciasDia = useLiveQuery(
     async () => {
       const all = await db.ausencias.toArray();
@@ -159,6 +222,10 @@ export default function RelatoriosPage() {
     setLoading(true);
     setError(null);
     try {
+      await Promise.all([
+        pullAlocacoesForRange(inicio, fim),
+        pullPacksForRange(inicio, fim),
+      ]);
       const [a, b] = await Promise.all([
         api.get<ProducaoOperarioDia[]>('/relatorios/producao-operario-dia', {
           params: { inicio, fim },
@@ -231,17 +298,158 @@ export default function RelatoriosPage() {
       .slice(0, 8);
   }, [porLote, loteByServer]);
 
-  const shiftStartMin = jornada ? toMin(normalizeTime(jornada.horaInicio)) : DEFAULT_SHIFT_START_MIN;
-  const shiftEndMin = jornada ? toMin(normalizeTime(jornada.horaFim)) : DEFAULT_SHIFT_END_MIN;
-  const pausasMin = useMemo(
-    () =>
-      (jornada?.pausas ?? []).map((p) => ({
-        start: toMin(normalizeTime(p.horaInicio)),
-        end: toMin(normalizeTime(p.horaFim)),
-      })),
-    [jornada],
+  // Helper: resolve jornada efetiva por operário num dia.
+  const efetivaParaOperario = (operarioId: string, jornadaIdDoOperario: string, data: string): JornadaEfetiva | null =>
+    resolverJornadaEfetiva({ operarioId, data, jornadas, diasEspeciais, jornadaIdDoOperario });
+
+  /**
+   * Calcula, para cada (operario, dia, alocação), os campos: horas, meta, produzido, pct.
+   * É o coração dos novos gráficos por operário/operação e da média total por dia.
+   */
+  const desempenho = useMemo(() => {
+    const ausenciasMap = new Map<string, Set<string>>();
+    // ausências indexadas por (operarioId, data)
+    // (filtradas dentro do range no consumo)
+
+    type Linha = {
+      operarioId: string;
+      operarioNome: string;
+      data: string;
+      alocId: string;
+      operacaoId: string;
+      operacaoNome: string;
+      loteCodigo: string;
+      meta: number;
+      produzido: number;
+      pct: number;
+    };
+    const linhas: Linha[] = [];
+
+    // Index packs por alocação
+    const packsByAloc = new Map<string, number>();
+    for (const p of packsPeriodo) {
+      packsByAloc.set(p.alocacaoId, (packsByAloc.get(p.alocacaoId) ?? 0) + p.quantidade);
+    }
+
+    // Group alocações por operário+data para calcular horas trabalhadas.
+    const allocByOpData = new Map<string, typeof alocacoesPeriodo>();
+    for (const a of alocacoesPeriodo) {
+      const k = `${a.operarioId}|${a.data}`;
+      (allocByOpData.get(k) ?? allocByOpData.set(k, []).get(k)!).push(a);
+    }
+
+    for (const [k, alocs] of allocByOpData) {
+      const [opId, data] = k.split('|');
+      const op = operarioByLocal.get(opId);
+      if (!op) continue;
+      const efetiva = efetivaParaOperario(opId, op.jornadaId, data);
+      const shiftStartMin = efetiva ? toMin(efetiva.horaInicio) : DEFAULT_SHIFT_START_MIN;
+      const shiftEndMin = efetiva ? toMin(efetiva.horaFim) : DEFAULT_SHIFT_END_MIN;
+      const pausasMin = (efetiva?.pausas ?? []).map((p) => ({ start: toMin(p.horaInicio), end: toMin(p.horaFim) }));
+      const sorted = [...alocs].sort((a, b) => a.horarioInicio.localeCompare(b.horarioInicio));
+      sorted.forEach((a, i) => {
+        const rawStart = toMin(a.horarioInicio);
+        const rawEnd = i + 1 < sorted.length ? toMin(sorted[i + 1].horarioInicio) : shiftEndMin;
+        const startMin = Math.max(rawStart, shiftStartMin);
+        const endMin = Math.min(rawEnd, shiftEndMin);
+        const span = Math.max(0, endMin - startMin);
+        const pausaOverlap = pausasMin.reduce((s, p) => s + overlapMin(startMin, endMin, p.start, p.end), 0);
+        const ausenteNoDia = ausenciasMap.get(opId)?.has(data) ?? false;
+        const workingMin = ausenteNoDia ? 0 : Math.max(0, span - pausaOverlap);
+        const horas = workingMin / 60;
+        const lote = loteByLocal.get(a.loteId);
+        const operacao = lote?.operacoes.find((o) => o.id === a.operacaoId);
+        const meta = Math.round((operacao?.metaPorHora ?? 0) * horas);
+        const produzido = packsByAloc.get(a.id) ?? 0;
+        const pct = meta > 0 ? Math.round((produzido / meta) * 100) : 0;
+        linhas.push({
+          operarioId: opId,
+          operarioNome: op.nome,
+          data,
+          alocId: a.id,
+          operacaoId: a.operacaoId,
+          operacaoNome: operacao?.nome ?? '?',
+          loteCodigo: lote?.codigo ?? '?',
+          meta,
+          produzido,
+          pct,
+        });
+      });
+    }
+    return linhas;
+  }, [alocacoesPeriodo, packsPeriodo, jornadas, diasEspeciais, operarioByLocal, loteByLocal]);
+
+  // Operário em foco: opções (todos com produção) e dados.
+  const operariosComDados = useMemo(() => {
+    const ids = new Set(desempenho.map((d) => d.operarioId));
+    return operarios
+      .filter((o) => ids.has(o.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [desempenho, operarios]);
+
+  useEffect(() => {
+    if (!operarioFoco && operariosComDados.length > 0) {
+      setOperarioFoco(operariosComDados[0].id);
+    }
+  }, [operariosComDados, operarioFoco]);
+
+  const desempenhoOperario = useMemo(
+    () => desempenho.filter((d) => d.operarioId === operarioFoco),
+    [desempenho, operarioFoco],
   );
 
+  // Por operação: média de % no período.
+  const porOperacao = useMemo(() => {
+    const m = new Map<string, { nome: string; pcts: number[]; produzido: number; meta: number }>();
+    for (const d of desempenhoOperario) {
+      if (d.meta === 0) continue;
+      const k = d.operacaoId;
+      const cur = m.get(k) ?? { nome: d.operacaoNome, pcts: [], produzido: 0, meta: 0 };
+      cur.pcts.push(d.pct);
+      cur.produzido += d.produzido;
+      cur.meta += d.meta;
+      m.set(k, cur);
+    }
+    return Array.from(m.values())
+      .map((v) => ({
+        label: v.nome,
+        value: Math.round(v.pcts.reduce((s, x) => s + x, 0) / v.pcts.length),
+        sub: `${v.produzido} / ${v.meta} pçs · ${v.pcts.length} dia(s)`,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [desempenhoOperario]);
+
+  // Por dia (operário em foco): média % do dia (nova fórmula = média das %).
+  const porDiaOperario = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const d of desempenhoOperario) {
+      if (d.meta === 0) continue;
+      (m.get(d.data) ?? m.set(d.data, []).get(d.data)!).push(d.pct);
+    }
+    const result: { label: string; value: number; date: string }[] = [];
+    const start = new Date(inicio + 'T00:00:00');
+    const end = new Date(fim + 'T00:00:00');
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return result;
+    const cur = new Date(start);
+    let safety = 0;
+    while (cur <= end && safety < 366) {
+      const iso = cur.toISOString().slice(0, 10);
+      const arr = m.get(iso) ?? [];
+      const avg = arr.length > 0 ? Math.round(arr.reduce((s, x) => s + x, 0) / arr.length) : 0;
+      result.push({ label: fmtDayMonth(iso), value: avg, date: iso });
+      cur.setDate(cur.getDate() + 1);
+      safety++;
+    }
+    return result;
+  }, [desempenhoOperario, inicio, fim]);
+
+  const mediaPeriodoOperario = useMemo(() => {
+    const valores = porDiaOperario.map((x) => x.value).filter((x) => x > 0);
+    if (valores.length === 0) return 0;
+    return Math.round(valores.reduce((s, x) => s + x, 0) / valores.length);
+  }, [porDiaOperario]);
+
+  // Detalhe diário (mantido) para o dia em foco.
   const ausentesPorOperario = useMemo(() => {
     const m = new Map<string, (typeof ausenciasDia)[number]>();
     for (const a of ausenciasDia) {
@@ -267,7 +475,6 @@ export default function RelatoriosPage() {
       alocId: string;
       horario: string;
       loteCodigo: string;
-      tamanho: string;
       operacao: string;
       horas: number;
       meta: number;
@@ -287,6 +494,11 @@ export default function RelatoriosPage() {
 
     for (const [opId, alocs] of allocByOp) {
       const ausencia = ausentesPorOperario.get(opId);
+      const op = operarioByLocal.get(opId);
+      const efetiva = op ? efetivaParaOperario(opId, op.jornadaId, diaDetalhe) : null;
+      const shiftStartMin = efetiva ? toMin(efetiva.horaInicio) : DEFAULT_SHIFT_START_MIN;
+      const shiftEndMin = efetiva ? toMin(efetiva.horaFim) : DEFAULT_SHIFT_END_MIN;
+      const pausasMin = (efetiva?.pausas ?? []).map((p) => ({ start: toMin(p.horaInicio), end: toMin(p.horaFim) }));
       const sorted = [...alocs].sort((a, b) => a.horarioInicio.localeCompare(b.horarioInicio));
       const itens: Item[] = sorted.map((a, i) => {
         const rawStart = toMin(a.horarioInicio);
@@ -294,10 +506,7 @@ export default function RelatoriosPage() {
         const startMin = Math.max(rawStart, shiftStartMin);
         const endMin = Math.min(rawEnd, shiftEndMin);
         const span = Math.max(0, endMin - startMin);
-        const pausaOverlap = pausasMin.reduce(
-          (s, p) => s + overlapMin(startMin, endMin, p.start, p.end),
-          0,
-        );
+        const pausaOverlap = pausasMin.reduce((s, p) => s + overlapMin(startMin, endMin, p.start, p.end), 0);
         const workingMin = ausencia ? 0 : Math.max(0, span - pausaOverlap);
         const horas = workingMin / 60;
         const lote = loteByLocal.get(a.loteId);
@@ -309,18 +518,16 @@ export default function RelatoriosPage() {
           alocId: a.id,
           horario: a.horarioInicio.slice(0, 5),
           loteCodigo: lote?.codigo ?? '?',
-          tamanho: a.tamanho,
           operacao: operacao?.nome ?? '?',
-          horas,
-          meta,
-          produzido,
-          pct,
+          horas, meta, produzido, pct,
         };
       });
       const totalMeta = itens.reduce((s, x) => s + x.meta, 0);
       const totalProduzido = itens.reduce((s, x) => s + x.produzido, 0);
-      const totalPct = totalMeta > 0 ? Math.round((totalProduzido / totalMeta) * 100) : 0;
-      const op = operarioByLocal.get(opId);
+      const itensComMeta = itens.filter((x) => x.meta > 0);
+      const totalPct = itensComMeta.length > 0
+        ? Math.round(itensComMeta.reduce((s, x) => s + x.pct, 0) / itensComMeta.length)
+        : 0;
       rows.push({
         operarioId: opId,
         operarioNome: op?.nome ?? opId,
@@ -333,12 +540,9 @@ export default function RelatoriosPage() {
     }
     rows.sort((a, b) => b.totalPct - a.totalPct);
     return rows;
-  }, [alocacoesDia, packsDia, loteByLocal, operarioByLocal, shiftStartMin, shiftEndMin, pausasMin, ausentesPorOperario]);
+  }, [alocacoesDia, packsDia, loteByLocal, operarioByLocal, jornadas, diasEspeciais, diaDetalhe, ausentesPorOperario]);
 
   const semDadosPeriodo = porDia.every((d) => d.value === 0);
-  const shiftEndH = Math.floor(shiftEndMin / 60);
-  const shiftEndM = shiftEndMin % 60;
-  const shiftEndLabel = shiftEndM === 0 ? `${shiftEndH}h` : `${shiftEndH}h${String(shiftEndM).padStart(2, '0')}`;
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
@@ -378,33 +582,29 @@ export default function RelatoriosPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi
-          label="Total de peças"
-          value={totalPecas.toLocaleString('pt-BR')}
-          sub={`em ${diasComProducao} dia(s) com produção`}
-        />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <Kpi label="Total de peças" value={totalPecas.toLocaleString('pt-BR')} sub={`em ${diasComProducao} dia(s)`} />
         <Kpi label="Média por dia" value={mediaDia.toLocaleString('pt-BR')} sub="peças/dia" />
-        <Kpi label="Operários ativos" value={operariosAtivos} sub="produziram no período" />
-        <Kpi label="Lotes produzidos" value={lotesProduzidos} sub="com peças no período" />
+        <Kpi label="Operários ativos" value={operariosAtivos} sub="produziram" />
+        <Kpi label="Lotes produzidos" value={lotesProduzidos} sub="no período" />
       </div>
 
       <section className="bg-white border border-slate-200 rounded-md p-4">
-        <h3 className="font-semibold mb-3">Produção diária</h3>
+        <h3 className="font-semibold mb-3">Produção diária (peças)</h3>
         {semDadosPeriodo ? (
           <p className="text-sm text-slate-500">Sem dados.</p>
         ) : (
-          <VBars data={porDia} />
+          <Timeline data={porDia} />
         )}
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <section className="bg-white border border-slate-200 rounded-md p-4">
-          <h3 className="font-semibold mb-3">Top operários</h3>
+          <h3 className="font-semibold mb-3">Top operários (peças)</h3>
           <HBars data={topOperarios} color="#0f766e" />
         </section>
         <section className="bg-white border border-slate-200 rounded-md p-4">
-          <h3 className="font-semibold mb-3">Top lotes</h3>
+          <h3 className="font-semibold mb-3">Top lotes (peças)</h3>
           <HBars data={topLotes} color="#1d4ed8" />
         </section>
       </div>
@@ -412,10 +612,71 @@ export default function RelatoriosPage() {
       <section className="bg-white border border-slate-200 rounded-md p-4 space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 className="font-semibold">Meta x produzido por operário</h3>
+            <h3 className="font-semibold">Desempenho por operário</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Por alocação no dia. Meta = meta/hora × horas trabalhadas (até a próxima alocação ou
-              fim de turno {shiftEndLabel}), descontando pausas da jornada e ausências.
+              Média do operário em cada operação e por dia no período.
+            </p>
+          </div>
+          <label className="block">
+            <span className="block text-sm text-slate-700 mb-1">Operário</span>
+            <select
+              value={operarioFoco}
+              onChange={(e) => setOperarioFoco(e.target.value)}
+              className="px-3 py-2 border border-slate-300 rounded-md min-w-[180px]"
+            >
+              {operariosComDados.length === 0 && <option value="">— Nenhum com dados —</option>}
+              {operariosComDados.map((o) => (
+                <option key={o.id} value={o.id}>{o.nome}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {operarioFoco && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              <Kpi
+                label="Média no período"
+                value={`${mediaPeriodoOperario}%`}
+                sub="média das % diárias"
+              />
+              <Kpi
+                label="Operações"
+                value={porOperacao.length}
+                sub="com produção"
+              />
+              <Kpi
+                label="Dias com produção"
+                value={porDiaOperario.filter((x) => x.value > 0).length}
+                sub="no período"
+              />
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Média por operação (%)</h4>
+              {porOperacao.length === 0
+                ? <p className="text-sm text-slate-500">Sem dados.</p>
+                : <HBars data={porOperacao} color="#0f766e" unit="%" />}
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Média total por dia (%)</h4>
+              {porDiaOperario.every((d) => d.value === 0)
+                ? <p className="text-sm text-slate-500">Sem dados.</p>
+                : <Timeline data={porDiaOperario} unit="%" />}
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-md p-4 space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="font-semibold">Detalhe do dia</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Por alocação. Meta = meta/hora × horas trabalhadas (até a próxima alocação ou
+              fim de turno do operário), descontando pausas e ausências. Total do operário =
+              média das % de cada operação.
             </p>
           </div>
           <label className="block">
@@ -460,7 +721,7 @@ export default function RelatoriosPage() {
                         <span className="text-slate-700 min-w-0 truncate">
                           <span className="font-mono">{it.horario}</span>
                           <span className="text-slate-400"> · </span>
-                          {it.loteCodigo} · tam {it.tamanho} · {it.operacao}
+                          {it.loteCodigo} · {it.operacao}
                           <span className="text-slate-400"> · </span>
                           <span className="text-slate-500">{it.horas.toFixed(1)}h</span>
                         </span>

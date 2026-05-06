@@ -30,6 +30,11 @@ public class AlocacaoService {
     }
 
     @Transactional(readOnly = true)
+    public List<AlocacaoDto> findByDataBetween(LocalDate inicio, LocalDate fim) {
+        return repository.findByDataBetween(inicio, fim).stream().map(AlocacaoMapper::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
     public AlocacaoDto findById(UUID id) {
         return AlocacaoMapper.toDto(repository.findById(id)
             .orElseThrow(() -> new AlocacaoNotFoundException(id)));

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/dexie';
 import { alocacoesRepo } from './alocacoesRepo';
-import { normalizeTime } from '../jornada/jornadaRepo';
+import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
 
@@ -19,16 +19,28 @@ export default function AlocacaoModal({
   operarioId, operarioNome, data, alocacao, defaultHorario, onClose,
 }: Props) {
   const lotes = useLiveQuery(() => db.lotes.toArray(), []) ?? [];
-  const jornada = useLiveQuery(() => db.jornadaCache.get('singleton'), [])?.data;
+  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
+  const operario = useLiveQuery(() => db.operarios.get(operarioId), [operarioId]);
 
-  const horarioManha = jornada ? normalizeTime(jornada.horaInicio) : null;
+  const efetiva = useMemo(() => {
+    if (!operario) return null;
+    return resolverJornadaEfetiva({
+      operarioId,
+      data,
+      jornadas,
+      diasEspeciais,
+      jornadaIdDoOperario: operario.jornadaId,
+    });
+  }, [operario, operarioId, data, jornadas, diasEspeciais]);
+
+  const horarioManha = efetiva?.horaInicio ?? null;
   const horarioTarde = useMemo(() => {
-    const almoco = jornada?.pausas.find((p) => p.tipo === 'ALMOCO');
-    return almoco ? normalizeTime(almoco.horaFim) : null;
-  }, [jornada]);
+    const almoco = efetiva?.pausas.find((p) => p.tipo === 'ALMOCO');
+    return almoco ? almoco.horaFim : null;
+  }, [efetiva]);
 
   const [loteId, setLoteId] = useState<string>(alocacao?.loteId ?? '');
-  const [tamanho, setTamanho] = useState<string>(alocacao?.tamanho ?? '');
   const [operacaoId, setOperacaoId] = useState<string>(alocacao?.operacaoId ?? '');
   const [horarioInicio, setHorarioInicio] = useState<string>(
     alocacao?.horarioInicio ?? defaultHorario ?? defaultNowHHMM(),
@@ -43,13 +55,12 @@ export default function AlocacaoModal({
 
   useEffect(() => {
     if (!lote) return;
-    if (tamanho && !lote.tamanhos.some((t) => t.tamanho === tamanho)) setTamanho('');
     if (operacaoId && !lote.operacoes.some((o) => o.id === operacaoId)) setOperacaoId('');
-  }, [lote, tamanho, operacaoId]);
+  }, [lote, operacaoId]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loteId || !tamanho || !operacaoId || !horarioInicio) {
+    if (!loteId || !operacaoId || !horarioInicio) {
       setError('Preencha todos os campos.');
       return;
     }
@@ -57,11 +68,11 @@ export default function AlocacaoModal({
     try {
       if (alocacao) {
         await alocacoesRepo.update(alocacao.id, {
-          loteId, tamanho, operacaoId, horarioInicio,
+          loteId, operacaoId, horarioInicio,
         });
       } else {
         await alocacoesRepo.create({
-          operarioId, data, horarioInicio, loteId, tamanho, operacaoId,
+          operarioId, data, horarioInicio, loteId, operacaoId,
         });
       }
       onClose();
@@ -128,23 +139,6 @@ export default function AlocacaoModal({
             {lotes.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.codigo} — {l.nome}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Tamanho">
-          <select
-            value={tamanho}
-            onChange={(e) => setTamanho(e.target.value)}
-            className="input"
-            disabled={!lote}
-            required
-          >
-            <option value="">Selecione…</option>
-            {lote?.tamanhos.map((t) => (
-              <option key={t.id} value={t.tamanho}>
-                {t.tamanho} ({t.quantidade} pçs)
               </option>
             ))}
           </select>

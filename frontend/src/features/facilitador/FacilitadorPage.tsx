@@ -6,12 +6,11 @@ import PackModal from '../packs/PackModal';
 import AlocacaoModal from '../alocacoes/AlocacaoModal';
 import { alocacoesRepo } from '../alocacoes/alocacoesRepo';
 import { packsRepo } from '../packs/packsRepo';
-import { jornadaRepo, pausaAtiva } from '../jornada/jornadaRepo';
+import { resolverJornadaEfetiva, pausaAtiva } from '../jornada/jornadaRepo';
 import { pullAlocacoesForDate, pullPacksForDate } from '../../services/syncService';
 import type { OperarioLocal } from '../../types/operario';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { PackLocal } from '../../types/pack';
-import type { ConfiguracaoJornadaWire } from '../../types/jornada';
 import type { AusenciaLocal, TipoAusencia } from '../../types/ausencia';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -34,7 +33,6 @@ export default function FacilitadorPage() {
   const [data, setData] = useState<string>(todayISO());
   const [packTarget, setPackTarget] = useState<{ op: OperarioLocal; alocs: AlocacaoLocal[] } | null>(null);
   const [allocTarget, setAllocTarget] = useState<OperarioLocal | null>(null);
-  const [jornada, setJornada] = useState<ConfiguracaoJornadaWire | null>(null);
   const [now, setNow] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -43,12 +41,12 @@ export default function FacilitadorPage() {
   }, [data]);
 
   useEffect(() => {
-    let cancelled = false;
-    void jornadaRepo.getCached().then((c) => { if (!cancelled) setJornada(c); });
-    void jornadaRepo.refresh().then((c) => { if (!cancelled) setJornada(c); });
     const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => { cancelled = true; clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
+
+  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
 
   const operarios = useLiveQuery(
     async () => (await db.operarios.toArray())
@@ -85,7 +83,19 @@ export default function FacilitadorPage() {
     return m;
   }, [ausencias, data]);
 
-  const pausa = jornada ? (data === todayISO() ? pausaAtiva(jornada, now) : null) : null;
+  // Pausa banner: any operário ativo on a break right now (today only).
+  const pausaGeral = useMemo(() => {
+    if (data !== todayISO()) return null;
+    for (const op of operarios) {
+      const efetiva = resolverJornadaEfetiva({
+        operarioId: op.id, data, jornadas, diasEspeciais, jornadaIdDoOperario: op.jornadaId,
+      });
+      if (!efetiva) continue;
+      const p = pausaAtiva(efetiva, now);
+      if (p) return p;
+    }
+    return null;
+  }, [data, operarios, jornadas, diasEspeciais, now]);
 
   const allocByOperario = useMemo(() => {
     const m = new Map<string, AlocacaoLocal[]>();
@@ -112,9 +122,9 @@ export default function FacilitadorPage() {
       <h2 className="text-2xl font-semibold">Facilitador</h2>
       <DateNav value={data} onChange={setData} showTodayBanner />
 
-      {pausa && (
+      {pausaGeral && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-md text-sm">
-          Em pausa: <span className="font-semibold">{pausa.nome}</span> até {pausa.horaFim}
+          Em pausa: <span className="font-semibold">{pausaGeral.nome}</span> até {pausaGeral.horaFim}
         </div>
       )}
 
@@ -164,7 +174,7 @@ export default function FacilitadorPage() {
                         >
                           <span className="font-mono">{a.horarioInicio.slice(0, 5)}</span>
                           {' · '}
-                          {lote?.codigo ?? '?'} · tam {a.tamanho} · {operacao?.nome ?? '?'}
+                          {lote?.codigo ?? '?'} · {operacao?.nome ?? '?'}
                           {isVigente && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">vigente</span>}
                         </p>
                       );
@@ -187,7 +197,7 @@ export default function FacilitadorPage() {
                               {' · '}
                               <span className="font-semibold text-slate-900">{p.quantidade} pçs</span>
                               {' · '}
-                              {lote?.codigo ?? '?'} · tam {aloc?.tamanho ?? '?'} · {operacao?.nome ?? '?'}
+                              {lote?.codigo ?? '?'} · tam {p.tamanho} · {operacao?.nome ?? '?'}
                             </span>
                             <button
                               onClick={() => confirm('Remover este pack?') && packsRepo.markDeleted(p.id)}

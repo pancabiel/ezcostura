@@ -8,7 +8,8 @@ final class OperarioMapper {
     static OperarioDto toDto(Operario o) {
         return new OperarioDto(
             o.getId(), o.getNome(), o.getCpf(), o.getTelefone(),
-            o.getDataAdmissao(), o.isAtivo(), o.getCreatedAt(), o.getUpdatedAt()
+            o.getDataAdmissao(), o.isAtivo(), o.getJornadaId(),
+            o.getCreatedAt(), o.getUpdatedAt()
         );
     }
 
@@ -18,6 +19,7 @@ final class OperarioMapper {
         target.setTelefone(emptyToNull(dto.telefone()));
         target.setDataAdmissao(dto.dataAdmissao());
         target.setAtivo(dto.ativo());
+        target.setJornadaId(dto.jornadaId());
     }
 
     private static String emptyToNull(String s) {

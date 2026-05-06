@@ -14,6 +14,7 @@ public record OperarioDto(
     String telefone,
     @NotNull LocalDate dataAdmissao,
     boolean ativo,
+    @NotNull UUID jornadaId,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt
 ) {}

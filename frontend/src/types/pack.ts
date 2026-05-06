@@ -8,6 +8,7 @@ export interface PackLocal {
   horario: string;    // ISO datetime
   alocacaoId: string;
   quantidade: number;
+  tamanho: string;
   registradoPor?: string;
   syncStatus: SyncStatus;
   updatedAt: string;
@@ -22,6 +23,7 @@ export interface PackWire {
   horario: string;
   alocacaoId: string;
   quantidade: number;
+  tamanho: string;
   registradoPor?: string;
   createdAt?: string;
 }

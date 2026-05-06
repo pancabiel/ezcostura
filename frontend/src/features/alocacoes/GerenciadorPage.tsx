@@ -90,8 +90,6 @@ export default function GerenciadorPage() {
                           <span className="text-sm">
                             {lote ? `${lote.codigo} · ${lote.nome}` : 'Lote ?'}
                             <span className="text-slate-400"> · </span>
-                            tam {a.tamanho}
-                            <span className="text-slate-400"> · </span>
                             op {operacao?.nome ?? '?'}
                           </span>
                         </li>

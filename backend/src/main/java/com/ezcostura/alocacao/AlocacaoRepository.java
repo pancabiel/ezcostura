@@ -18,4 +18,10 @@ public interface AlocacaoRepository extends CrudRepository<Alocacao, UUID> {
         @Param("operarioId") UUID operarioId,
         @Param("data") LocalDate data
     );
+
+    @Query("SELECT * FROM alocacoes WHERE data BETWEEN :inicio AND :fim ORDER BY data, operario_id, horario_inicio")
+    List<Alocacao> findByDataBetween(
+        @Param("inicio") LocalDate inicio,
+        @Param("fim") LocalDate fim
+    );
 }

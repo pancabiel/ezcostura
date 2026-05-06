@@ -1,17 +1,16 @@
 package com.ezcostura.jornada.dto;
 
-import jakarta.validation.Valid;
+import com.ezcostura.jornada.TipoPausa;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
-public record ConfiguracaoJornadaDto(
+public record DiaEspecialPausaDto(
     UUID id,
+    @Size(max = 50) String nome,
     @NotNull LocalTime horaInicio,
     @NotNull LocalTime horaFim,
-    @Valid List<PausaDto> pausas,
-    OffsetDateTime updatedAt
+    @NotNull TipoPausa tipo
 ) {}

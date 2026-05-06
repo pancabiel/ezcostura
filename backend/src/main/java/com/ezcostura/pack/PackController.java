@@ -35,9 +35,17 @@ public class PackController {
 
     @GetMapping
     public Mono<List<PackDto>> findByData(
-        @RequestParam("data") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+        @RequestParam(value = "data", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+        @RequestParam(value = "inicio", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+        @RequestParam(value = "fim", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
         @RequestParam(value = "operarioId", required = false) UUID operarioId
     ) {
+        if (inicio != null && fim != null) {
+            return ReactiveTenantHelper.runBlocking(() -> service.findByDataBetween(inicio, fim));
+        }
+        if (data == null) {
+            throw new IllegalArgumentException("Informe 'data' ou ('inicio' e 'fim').");
+        }
         return ReactiveTenantHelper.runBlocking(() -> service.findByData(data, operarioId));
     }
 

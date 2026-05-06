@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/dexie';
 import { operariosRepo } from './operariosRepo';
 
 interface FormState {
@@ -8,6 +10,7 @@ interface FormState {
   telefone: string;
   dataAdmissao: string;
   ativo: boolean;
+  jornadaId: string;
 }
 
 const empty: FormState = {
@@ -16,12 +19,18 @@ const empty: FormState = {
   telefone: '',
   dataAdmissao: new Date().toISOString().slice(0, 10),
   ativo: true,
+  jornadaId: '',
 };
 
 export default function OperarioFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+
+  const jornadas = useLiveQuery(
+    async () => (await db.jornadas.toArray()).filter((j) => !j.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome)),
+    [],
+  ) ?? [];
 
   const [form, setForm] = useState<FormState>(empty);
   const [loading, setLoading] = useState(isEdit);
@@ -45,6 +54,7 @@ export default function OperarioFormPage() {
         telefone: o.telefone ?? '',
         dataAdmissao: o.dataAdmissao,
         ativo: o.ativo,
+        jornadaId: o.jornadaId,
       });
       setLoading(false);
     })();
@@ -53,6 +63,14 @@ export default function OperarioFormPage() {
     };
   }, [id]);
 
+  // Default to first available jornada when creating.
+  useEffect(() => {
+    if (isEdit) return;
+    if (!form.jornadaId && jornadas.length > 0) {
+      setForm((p) => ({ ...p, jornadaId: jornadas[0].id }));
+    }
+  }, [isEdit, form.jornadaId, jornadas]);
+
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
@@ -60,6 +78,10 @@ export default function OperarioFormPage() {
     e.preventDefault();
     if (!form.nome.trim()) {
       setError('Nome é obrigatório.');
+      return;
+    }
+    if (!form.jornadaId) {
+      setError('Selecione uma jornada de trabalho.');
       return;
     }
     setSaving(true);
@@ -71,6 +93,7 @@ export default function OperarioFormPage() {
         telefone: form.telefone.trim() || undefined,
         dataAdmissao: form.dataAdmissao,
         ativo: form.ativo,
+        jornadaId: form.jornadaId,
       };
       if (isEdit && id) await operariosRepo.update(id, payload);
       else await operariosRepo.create(payload);
@@ -114,6 +137,24 @@ export default function OperarioFormPage() {
             onChange={(e) => update('dataAdmissao', e.target.value)}
             className="input"
           />
+        </Field>
+        <Field label="Jornada de trabalho">
+          <select
+            value={form.jornadaId}
+            onChange={(e) => update('jornadaId', e.target.value)}
+            className="input"
+            required
+          >
+            <option value="">Selecione…</option>
+            {jornadas.map((j) => (
+              <option key={j.id} value={j.id}>{j.nome}</option>
+            ))}
+          </select>
+          {jornadas.length === 0 && (
+            <p className="text-xs text-rose-700 mt-1">
+              Cadastre uma jornada antes em Configurações &gt; Jornada.
+            </p>
+          )}
         </Field>
         <label className="flex items-center gap-2">
           <input

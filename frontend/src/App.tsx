@@ -9,7 +9,9 @@ import OperarioFormPage from './features/operarios/OperarioFormPage';
 import GerenciadorPage from './features/alocacoes/GerenciadorPage';
 import FacilitadorPage from './features/facilitador/FacilitadorPage';
 import RelatoriosPage from './features/relatorios/RelatoriosPage';
-import ConfiguracaoJornadaPage from './features/jornada/ConfiguracaoJornadaPage';
+import JornadasListPage from './features/jornada/JornadasListPage';
+import JornadaFormPage from './features/jornada/JornadaFormPage';
+import DiasEspeciaisPage from './features/jornada/DiasEspeciaisPage';
 import AusenciasPage from './features/ausencias/AusenciasPage';
 import { useAuthStore } from './stores/authStore';
 
@@ -106,7 +108,31 @@ export default function App() {
           path="/configuracoes/jornada"
           element={
             <ProtectedRoute roles={['ADMIN']}>
-              <ConfiguracaoJornadaPage />
+              <JornadasListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/jornada/nova"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <JornadaFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/jornada/:id"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <JornadaFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/dias-especiais"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <DiasEspeciaisPage />
             </ProtectedRoute>
           }
         />

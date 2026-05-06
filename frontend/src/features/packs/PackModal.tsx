@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { packsRepo } from './packsRepo';
 import { alocacoesRepo } from '../alocacoes/alocacoesRepo';
+import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import { getSession } from '../../stores/authStore';
 import { db } from '../../db/dexie';
 import type { AlocacaoLocal } from '../../types/alocacao';
@@ -15,60 +17,197 @@ interface Props {
   onClose: () => void;
 }
 
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+function nowHHMM(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Para uma alocação específica num dia, calcula `início → fim` onde
+ * fim = início da próxima alocação (mesma data) OU fim do expediente.
+ */
+function calcularInicioFim(
+  aloc: AlocacaoLocal,
+  todasDoDia: AlocacaoLocal[],
+  fimExpediente: string,
+): { inicio: string; fim: string } {
+  const sorted = todasDoDia
+    .filter((a) => !a.pendingDelete)
+    .sort((a, b) => a.horarioInicio.localeCompare(b.horarioInicio));
+  const idx = sorted.findIndex((a) => a.id === aloc.id);
+  const inicio = aloc.horarioInicio.slice(0, 5);
+  const proxima = idx >= 0 && idx + 1 < sorted.length ? sorted[idx + 1] : null;
+  const proximoInicio = proxima ? proxima.horarioInicio.slice(0, 5) : null;
+  const fim = proximoInicio && proximoInicio < fimExpediente ? proximoInicio : fimExpediente;
+  return { inicio, fim };
+}
+
 export default function PackModal({ operarioId, operarioNome, data, alocacoes, lotes, onClose }: Props) {
   const vigente = useMemo(() => alocacoesRepo.pickVigente(alocacoes, new Date()), [alocacoes]);
-  const [alocacaoId, setAlocacaoId] = useState<string>(vigente?.id ?? alocacoes[0]?.id ?? '');
+
+  // Pré-seleciona o lote/operação da alocação vigente, se houver.
+  const [loteId, setLoteId] = useState<string>(vigente?.loteId ?? '');
+  const [operacaoId, setOperacaoId] = useState<string>(vigente?.operacaoId ?? '');
+  const [tamanho, setTamanho] = useState<string>('');
+  const [tamanhoTouched, setTamanhoTouched] = useState(false);
   const [quantidade, setQuantidade] = useState<number>(0);
   const [quantidadeTouched, setQuantidadeTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [jaProduzido, setJaProduzido] = useState<number>(0);
   const session = getSession();
 
-  const selectedLoteId = useMemo(
-    () => alocacoes.find((a) => a.id === alocacaoId)?.loteId,
-    [alocacaoId, alocacoes],
-  );
+  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
+  const operario = useLiveQuery(() => db.operarios.get(operarioId), [operarioId]);
 
+  const efetiva = useMemo(() => {
+    if (!operario) return null;
+    return resolverJornadaEfetiva({
+      operarioId, data, jornadas, diasEspeciais, jornadaIdDoOperario: operario.jornadaId,
+    });
+  }, [operario, operarioId, data, jornadas, diasEspeciais]);
+  const fimExpediente = efetiva?.horaFim ?? '17:00';
+
+  const selectedLote = useMemo(() => lotes.find((l) => l.id === loteId), [lotes, loteId]);
+
+  // Para cada operação do lote selecionado, descobre se já há alocação para esse operário no dia.
+  const operacoesComAloc = useMemo(() => {
+    if (!selectedLote) return [];
+    return selectedLote.operacoes.map((op) => {
+      const aloc = alocacoes.find(
+        (a) => !a.pendingDelete && a.loteId === selectedLote.id && a.operacaoId === op.id,
+      );
+      return { op, aloc };
+    });
+  }, [selectedLote, alocacoes]);
+
+  // Limpa operacaoId se não pertence ao novo lote.
   useEffect(() => {
-    if (!selectedLoteId || quantidadeTouched) return;
+    if (!selectedLote) return;
+    if (operacaoId && !selectedLote.operacoes.some((o) => o.id === operacaoId)) {
+      setOperacaoId('');
+    }
+  }, [selectedLote, operacaoId]);
+
+  // Auto-preenche tamanho com o último pack desta alocação (ou do lote+operação).
+  useEffect(() => {
+    if (!selectedLote || !operacaoId || tamanhoTouched) return;
+    let cancelled = false;
+    void (async () => {
+      const allAlocs = await db.alocacoes.toArray();
+      const alocIds = new Set(
+        allAlocs
+          .filter((a) => !a.pendingDelete && a.loteId === selectedLote.id && a.operacaoId === operacaoId)
+          .map((a) => a.id),
+      );
+      const allPacks = (await db.packs.toArray()).filter(
+        (p) => !p.pendingDelete && alocIds.has(p.alocacaoId),
+      );
+      if (cancelled) return;
+      if (allPacks.length === 0) { setTamanho(''); return; }
+      allPacks.sort((a, b) => b.horario.localeCompare(a.horario));
+      const lastTam = allPacks[0].tamanho;
+      if (selectedLote.tamanhos.some((t) => t.tamanho === lastTam)) {
+        setTamanho(lastTam);
+      } else {
+        setTamanho('');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLote, operacaoId, tamanhoTouched]);
+
+  // Auto-preenche quantidade com o último pack do lote (preserva regra antiga).
+  useEffect(() => {
+    if (!selectedLote || quantidadeTouched) return;
     let cancelled = false;
     void (async () => {
       const allAlocs = await db.alocacoes.toArray();
       const alocIdsForLote = new Set(
-        allAlocs.filter((a) => a.loteId === selectedLoteId).map((a) => a.id),
+        allAlocs.filter((a) => a.loteId === selectedLote.id).map((a) => a.id),
       );
-      if (alocIdsForLote.size === 0) return;
-      const allPacks = await db.packs.toArray();
-      const matches = allPacks.filter(
+      const allPacks = (await db.packs.toArray()).filter(
         (p) => !p.pendingDelete && alocIdsForLote.has(p.alocacaoId),
       );
-      if (cancelled || matches.length === 0) {
-        if (!cancelled) setQuantidade(0);
-        return;
-      }
-      matches.sort((a, b) => b.horario.localeCompare(a.horario));
-      setQuantidade(matches[0].quantidade);
+      if (cancelled) return;
+      if (allPacks.length === 0) { setQuantidade(0); return; }
+      allPacks.sort((a, b) => b.horario.localeCompare(a.horario));
+      setQuantidade(allPacks[0].quantidade);
     })();
     return () => { cancelled = true; };
-  }, [selectedLoteId, quantidadeTouched]);
+  }, [selectedLote, quantidadeTouched]);
+
+  // Soma já produzida para o lote+operação+tamanho selecionado.
+  useEffect(() => {
+    if (!selectedLote || !operacaoId || !tamanho) { setJaProduzido(0); return; }
+    let cancelled = false;
+    void (async () => {
+      const allAlocs = await db.alocacoes.toArray();
+      const alocIds = new Set(
+        allAlocs
+          .filter((a) => !a.pendingDelete && a.loteId === selectedLote.id && a.operacaoId === operacaoId)
+          .map((a) => a.id),
+      );
+      const total = (await db.packs.toArray()).reduce((s, p) => {
+        if (p.pendingDelete) return s;
+        if (!alocIds.has(p.alocacaoId)) return s;
+        if (p.tamanho !== tamanho) return s;
+        return s + p.quantidade;
+      }, 0);
+      if (!cancelled) setJaProduzido(total);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLote, operacaoId, tamanho]);
+
+  const limite = useMemo(() => {
+    if (!selectedLote || !tamanho) return null;
+    const t = selectedLote.tamanhos.find((x) => x.tamanho === tamanho);
+    return t?.quantidade ?? null;
+  }, [selectedLote, tamanho]);
+
+  const restante = limite != null ? Math.max(0, limite - jaProduzido) : null;
+  const ultrapassaria = limite != null && quantidade > 0 && jaProduzido + quantidade > limite;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!alocacaoId) {
-      setError('Selecione uma alocação.');
+    if (!loteId || !operacaoId) {
+      setError('Selecione o lote e a operação.');
+      return;
+    }
+    if (!tamanho) {
+      setError('Selecione um tamanho.');
       return;
     }
     if (!quantidade || quantidade <= 0) {
       setError('Quantidade deve ser maior que zero.');
       return;
     }
+    if (ultrapassaria && limite != null) {
+      setError(`Estouro do limite do lote: tamanho "${tamanho}" tem ${jaProduzido} de ${limite} peças produzidas. Resta(m) ${limite - jaProduzido}.`);
+      return;
+    }
+
     setSaving(true);
     try {
+      // Localiza alocação existente do operário+lote+operação no dia, ou cria.
+      let alocId = alocacoes.find(
+        (a) => !a.pendingDelete && a.loteId === loteId && a.operacaoId === operacaoId,
+      )?.id;
+      if (!alocId) {
+        const horarioInicio = data === todayISO() ? nowHHMM() : (efetiva?.horaInicio ?? '07:00');
+        const novo = await alocacoesRepo.create({
+          operarioId, data, horarioInicio, loteId, operacaoId,
+        });
+        alocId = novo.id;
+      }
       await packsRepo.create({
         operarioId, data,
         horario: new Date().toISOString(),
-        alocacaoId,
+        alocacaoId: alocId,
         quantidade,
+        tamanho,
         registradoPor: session?.userId,
       });
       onClose();
@@ -78,11 +217,9 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     }
   };
 
-  const loteFor = (a: AlocacaoLocal) => lotes.find((l) => l.id === a.loteId);
-
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <form onSubmit={submit} className="space-y-4">
           <div>
             <h3 className="text-xl font-semibold">Adicionar pack</h3>
@@ -95,30 +232,69 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
             </div>
           )}
 
-          {alocacoes.length === 0 ? (
-            <p className="text-sm text-rose-700">Operário sem alocação neste dia. Cadastre uma antes.</p>
-          ) : (
-            <label className="block">
-              <span className="block text-sm font-medium text-slate-700 mb-1">Alocação</span>
-              <select
-                value={alocacaoId}
-                onChange={(e) => setAlocacaoId(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
-              >
-                {alocacoes.map((a) => {
-                  const lote = loteFor(a);
-                  const op = lote?.operacoes.find((o) => o.id === a.operacaoId);
-                  const isVigente = vigente?.id === a.id;
-                  return (
-                    <option key={a.id} value={a.id}>
-                      {a.horarioInicio} · {lote?.codigo ?? '?'} · tam {a.tamanho} · {op?.nome ?? '?'}
-                      {isVigente ? ' (vigente)' : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          )}
+          <label className="block">
+            <span className="block text-sm font-medium text-slate-700 mb-1">Lote</span>
+            <select
+              value={loteId}
+              onChange={(e) => { setLoteId(e.target.value); setOperacaoId(''); setTamanhoTouched(false); }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
+              required
+            >
+              <option value="">Selecione…</option>
+              {lotes.map((l) => (
+                <option key={l.id} value={l.id}>{l.codigo} — {l.nome}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="block text-sm font-medium text-slate-700 mb-1">Operação</span>
+            <select
+              value={operacaoId}
+              onChange={(e) => { setOperacaoId(e.target.value); setTamanhoTouched(false); }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
+              required
+              disabled={!selectedLote}
+            >
+              <option value="">Selecione…</option>
+              {operacoesComAloc.map(({ op, aloc }) => {
+                const isVigente = vigente?.id === aloc?.id;
+                let label = op.nome;
+                if (aloc) {
+                  const { inicio, fim } = calcularInicioFim(aloc, alocacoes, fimExpediente);
+                  label = `${op.nome} — ${inicio} → ${fim}${isVigente ? ' (vigente)' : ''}`;
+                }
+                return <option key={op.id} value={op.id}>{label}</option>;
+              })}
+            </select>
+            {selectedLote && operacoesComAloc.length === 0 && (
+              <p className="text-xs text-slate-500 mt-1">Lote sem operações cadastradas.</p>
+            )}
+          </label>
+
+          <label className="block">
+            <span className="block text-sm font-medium text-slate-700 mb-1">Tamanho</span>
+            <select
+              value={tamanho}
+              onChange={(e) => { setTamanho(e.target.value); setTamanhoTouched(true); }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
+              disabled={!selectedLote}
+              required
+            >
+              <option value="">Selecione…</option>
+              {selectedLote?.tamanhos.map((t) => (
+                <option key={t.id} value={t.tamanho}>
+                  {t.tamanho} ({t.quantidade} pçs no lote)
+                </option>
+              ))}
+            </select>
+            {limite != null && (
+              <p className={`text-xs mt-1 ${restante === 0 ? 'text-rose-700' : 'text-slate-500'}`}>
+                Já produzido: <span className="font-mono">{jaProduzido}</span> de <span className="font-mono">{limite}</span>
+                {restante != null && <> · resta(m) <span className="font-mono">{restante}</span></>}
+              </p>
+            )}
+          </label>
 
           <label className="block">
             <span className="block text-sm font-medium text-slate-700 mb-1">Quantidade de peças</span>
@@ -133,8 +309,15 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
                 setQuantidadeTouched(true);
               }}
               onFocus={(e) => e.currentTarget.select()}
-              className="w-full text-3xl text-center px-3 py-4 border border-slate-300 rounded-md bg-white font-mono"
+              className={`w-full text-3xl text-center px-3 py-4 border rounded-md bg-white font-mono ${
+                ultrapassaria ? 'border-rose-400 bg-rose-50' : 'border-slate-300'
+              }`}
             />
+            {ultrapassaria && (
+              <p className="text-xs mt-1 text-rose-700">
+                Ultrapassa o limite. Máximo permitido agora: {Math.max(0, (limite ?? 0) - jaProduzido)}
+              </p>
+            )}
           </label>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -143,7 +326,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
             </button>
             <button
               type="submit"
-              disabled={saving || alocacoes.length === 0}
+              disabled={saving}
               className="px-6 py-3 rounded-md bg-emerald-600 text-white text-lg font-medium disabled:opacity-50 hover:bg-emerald-700"
             >
               {saving ? 'Registrando…' : 'Registrar'}

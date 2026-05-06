@@ -4,7 +4,7 @@ import { operariosApi } from '../features/operarios/operariosApi';
 import { alocacoesApi } from '../features/alocacoes/alocacoesApi';
 import { packsApi } from '../features/packs/packsApi';
 import { ausenciasApi } from '../features/ausencias/ausenciasApi';
-import { jornadaRepo } from '../features/jornada/jornadaRepo';
+import { jornadaApi, diasEspeciaisApi } from '../features/jornada/jornadaApi';
 import { useSyncStore } from '../stores/syncStore';
 import { getSession } from '../stores/authStore';
 import type { LoteLocal, LoteWire } from '../types/lote';
@@ -12,6 +12,7 @@ import type { OperarioLocal, OperarioWire } from '../types/operario';
 import type { AlocacaoLocal, AlocacaoWire } from '../types/alocacao';
 import type { PackLocal, PackWire } from '../types/pack';
 import type { AusenciaLocal, AusenciaWire } from '../types/ausencia';
+import type { DiaEspecialLocal, DiaEspecialWire, JornadaLocal, JornadaWire } from '../types/jornada';
 
 const SYNC_INTERVAL_MS = 5_000;
 let started = false;
@@ -51,16 +52,19 @@ async function runOnce(): Promise<void> {
     }
     useSyncStore.getState().setPhase('syncing');
 
+    await pushJornadas();
     await pushLotes();
     await pushOperarios();
+    await pushDiasEspeciais();
     await pushAlocacoes();
     await pushPacks();
     await pushAusencias();
 
+    await pullJornadas();
     await pullLotes();
     await pullOperarios();
+    await pullDiasEspeciais();
     await pullAusencias();
-    await jornadaRepo.refresh();
     // Alocações and packs are date-scoped; the relevant pages pull on demand.
 
     await refreshPendingCount();
@@ -72,6 +76,33 @@ async function runOnce(): Promise<void> {
   } finally {
     if (started) {
       timer = setTimeout(() => void runOnce(), SYNC_INTERVAL_MS);
+    }
+  }
+}
+
+async function pushJornadas() {
+  const pending = await db.jornadas.where('syncStatus').equals('pending').toArray();
+  for (const local of pending) {
+    try {
+      if (local.pendingDelete) {
+        if (local.serverId) await jornadaApi.remove(local.serverId);
+        await db.jornadas.delete(local.id);
+        continue;
+      }
+      const payload: JornadaWire = {
+        id: local.serverId ?? local.id,
+        nome: local.nome,
+        horaInicio: local.horaInicio,
+        horaFim: local.horaFim,
+        pausas: local.pausas,
+        diasSemana: local.diasSemana,
+      };
+      const saved = local.serverId
+        ? await jornadaApi.update(local.serverId, payload)
+        : await jornadaApi.create(payload);
+      await db.jornadas.update(local.id, { serverId: saved.id, syncStatus: 'synced', syncError: undefined });
+    } catch (err) {
+      await markError(db.jornadas, local.id, err);
     }
   }
 }
@@ -112,6 +143,7 @@ async function pushOperarios() {
         await db.operarios.delete(local.id);
         continue;
       }
+      const jornada = await db.jornadas.get(local.jornadaId);
       const payload: OperarioWire = {
         id: local.serverId ?? local.id,
         nome: local.nome,
@@ -119,6 +151,7 @@ async function pushOperarios() {
         telefone: local.telefone,
         dataAdmissao: local.dataAdmissao,
         ativo: local.ativo,
+        jornadaId: jornada?.serverId ?? local.jornadaId,
       };
       const saved = local.serverId
         ? await operariosApi.update(local.serverId, payload)
@@ -126,6 +159,36 @@ async function pushOperarios() {
       await db.operarios.update(local.id, { serverId: saved.id, syncStatus: 'synced', syncError: undefined });
     } catch (err) {
       await markError(db.operarios, local.id, err);
+    }
+  }
+}
+
+async function pushDiasEspeciais() {
+  const pending = await db.diasEspeciais.where('syncStatus').equals('pending').toArray();
+  for (const local of pending) {
+    try {
+      if (local.pendingDelete) {
+        if (local.serverId) await diasEspeciaisApi.remove(local.serverId);
+        await db.diasEspeciais.delete(local.id);
+        continue;
+      }
+      const operarios = await db.operarios.toArray();
+      const localToServer = new Map(operarios.map((o) => [o.id, o.serverId ?? o.id]));
+      const payload: DiaEspecialWire = {
+        id: local.serverId ?? local.id,
+        data: local.data,
+        descricao: local.descricao,
+        horaInicio: local.horaInicio,
+        horaFim: local.horaFim,
+        pausas: local.pausas,
+        operarioIds: local.operarioIds.map((id) => localToServer.get(id) ?? id),
+      };
+      const saved = local.serverId
+        ? await diasEspeciaisApi.update(local.serverId, payload)
+        : await diasEspeciaisApi.create(payload);
+      await db.diasEspeciais.update(local.id, { serverId: saved.id, syncStatus: 'synced', syncError: undefined });
+    } catch (err) {
+      await markError(db.diasEspeciais, local.id, err);
     }
   }
 }
@@ -145,7 +208,6 @@ async function pushAlocacoes() {
         data: local.data,
         horarioInicio: local.horarioInicio,
         loteId: serverIdOrLocal(await db.lotes.get(local.loteId), local.loteId),
-        tamanho: local.tamanho,
         operacaoId: local.operacaoId,
       };
       const saved = local.serverId
@@ -174,6 +236,7 @@ async function pushPacks() {
         horario: local.horario,
         alocacaoId: serverIdOrLocal(await db.alocacoes.get(local.alocacaoId), local.alocacaoId),
         quantidade: local.quantidade,
+        tamanho: local.tamanho,
         registradoPor: local.registradoPor,
       };
       const saved = await packsApi.create(payload);
@@ -207,6 +270,63 @@ async function pushAusencias() {
       await db.ausencias.update(local.id, { serverId: saved.id, syncStatus: 'synced', syncError: undefined });
     } catch (err) {
       await markError(db.ausencias, local.id, err);
+    }
+  }
+}
+
+async function pullJornadas() {
+  const remote = await jornadaApi.list();
+  const localByServer = new Map<string, JornadaLocal>();
+  for (const j of await db.jornadas.toArray()) if (j.serverId) localByServer.set(j.serverId, j);
+  for (const r of remote) {
+    const existing = localByServer.get(r.id);
+    if (!existing) {
+      await db.jornadas.add({
+        id: r.id, serverId: r.id,
+        nome: r.nome,
+        horaInicio: r.horaInicio, horaFim: r.horaFim,
+        pausas: r.pausas, diasSemana: r.diasSemana,
+        syncStatus: 'synced', updatedAt: r.updatedAt ?? new Date().toISOString(),
+      });
+    } else if (existing.syncStatus === 'synced') {
+      await db.jornadas.put({
+        ...existing,
+        nome: r.nome,
+        horaInicio: r.horaInicio, horaFim: r.horaFim,
+        pausas: r.pausas, diasSemana: r.diasSemana,
+        updatedAt: r.updatedAt ?? existing.updatedAt,
+      });
+    }
+  }
+}
+
+async function pullDiasEspeciais() {
+  const remote = await diasEspeciaisApi.list();
+  const localByServer = new Map<string, DiaEspecialLocal>();
+  for (const d of await db.diasEspeciais.toArray()) if (d.serverId) localByServer.set(d.serverId, d);
+  for (const r of remote) {
+    const localOpIds: string[] = [];
+    for (const opServerId of r.operarioIds) {
+      const op = await findLocalByServerId(db.operarios, opServerId);
+      localOpIds.push(op?.id ?? opServerId);
+    }
+    const existing = localByServer.get(r.id);
+    if (!existing) {
+      await db.diasEspeciais.add({
+        id: r.id, serverId: r.id,
+        data: r.data, descricao: r.descricao,
+        horaInicio: r.horaInicio, horaFim: r.horaFim,
+        pausas: r.pausas, operarioIds: localOpIds,
+        syncStatus: 'synced', updatedAt: r.updatedAt ?? new Date().toISOString(),
+      });
+    } else if (existing.syncStatus === 'synced') {
+      await db.diasEspeciais.put({
+        ...existing,
+        data: r.data, descricao: r.descricao,
+        horaInicio: r.horaInicio, horaFim: r.horaFim,
+        pausas: r.pausas, operarioIds: localOpIds,
+        updatedAt: r.updatedAt ?? existing.updatedAt,
+      });
     }
   }
 }
@@ -267,12 +387,15 @@ async function pullOperarios() {
   const localByServer = new Map<string, OperarioLocal>();
   for (const o of await db.operarios.toArray()) if (o.serverId) localByServer.set(o.serverId, o);
   for (const r of remote) {
+    const jornada = await findLocalByServerId(db.jornadas, r.jornadaId);
+    const localJornadaId = jornada?.id ?? r.jornadaId;
     const existing = localByServer.get(r.id);
     if (!existing) {
       await db.operarios.add({
         id: r.id, serverId: r.id,
         nome: r.nome, cpf: r.cpf, telefone: r.telefone,
         dataAdmissao: r.dataAdmissao, ativo: r.ativo,
+        jornadaId: localJornadaId,
         syncStatus: 'synced', updatedAt: r.updatedAt ?? new Date().toISOString(),
       });
     } else if (existing.syncStatus === 'synced') {
@@ -280,6 +403,7 @@ async function pullOperarios() {
         ...existing,
         nome: r.nome, cpf: r.cpf, telefone: r.telefone,
         dataAdmissao: r.dataAdmissao, ativo: r.ativo,
+        jornadaId: localJornadaId,
         updatedAt: r.updatedAt ?? existing.updatedAt,
       });
     }
@@ -299,6 +423,18 @@ export async function pullPacksForDate(data: string) {
   await reconcilePacks(remote);
 }
 
+export async function pullAlocacoesForRange(inicio: string, fim: string) {
+  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
+  const remote = await alocacoesApi.listByDataRange(inicio, fim);
+  await reconcileAlocacoes(remote);
+}
+
+export async function pullPacksForRange(inicio: string, fim: string) {
+  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
+  const remote = await packsApi.listByDataRange(inicio, fim);
+  await reconcilePacks(remote);
+}
+
 async function reconcileAlocacoes(remote: AlocacaoWire[]) {
   const localByServer = new Map<string, AlocacaoLocal>();
   for (const a of await db.alocacoes.toArray()) if (a.serverId) localByServer.set(a.serverId, a);
@@ -312,14 +448,14 @@ async function reconcileAlocacoes(remote: AlocacaoWire[]) {
         operarioId: operario?.id ?? r.operarioId,
         data: r.data, horarioInicio: r.horarioInicio,
         loteId: lote?.id ?? r.loteId,
-        tamanho: r.tamanho, operacaoId: r.operacaoId,
+        operacaoId: r.operacaoId,
         syncStatus: 'synced', updatedAt: new Date().toISOString(),
       });
     } else if (existing.syncStatus === 'synced') {
       await db.alocacoes.put({
         ...existing,
         data: r.data, horarioInicio: r.horarioInicio,
-        tamanho: r.tamanho, operacaoId: r.operacaoId,
+        operacaoId: r.operacaoId,
       });
     }
   }
@@ -337,7 +473,7 @@ async function reconcilePacks(remote: PackWire[]) {
       operarioId: operario?.id ?? r.operarioId,
       data: r.data, horario: r.horario,
       alocacaoId: aloc?.id ?? r.alocacaoId,
-      quantidade: r.quantidade, registradoPor: r.registradoPor,
+      quantidade: r.quantidade, tamanho: r.tamanho, registradoPor: r.registradoPor,
       syncStatus: 'synced', updatedAt: new Date().toISOString(),
     });
   }
@@ -367,6 +503,8 @@ async function refreshPendingCount(): Promise<void> {
     db.alocacoes.where('syncStatus').equals('pending').count(),
     db.packs.where('syncStatus').equals('pending').count(),
     db.ausencias.where('syncStatus').equals('pending').count(),
+    db.jornadas.where('syncStatus').equals('pending').count(),
+    db.diasEspeciais.where('syncStatus').equals('pending').count(),
   ]);
   useSyncStore.getState().setPendingCount(counts.reduce((a, b) => a + b, 0));
 }

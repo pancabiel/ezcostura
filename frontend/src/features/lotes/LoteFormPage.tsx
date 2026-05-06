@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuid } from 'uuid';
 import { lotesRepo } from './lotesRepo';
-import type { Operacao, Tamanho } from '../../types/lote';
+import type { LoteLocal, Operacao, Tamanho } from '../../types/lote';
 
 interface FormState {
   codigo: string;
@@ -29,6 +29,8 @@ export default function LoteFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [allLotes, setAllLotes] = useState<LoteLocal[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -57,6 +59,25 @@ export default function LoteFormPage() {
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const openCopy = async () => {
+    const list = await lotesRepo.list();
+    setAllLotes(list.filter((l) => l.id !== id && l.operacoes.length > 0));
+    setCopyOpen(true);
+  };
+
+  const copyOperacoesFrom = (sourceId: string) => {
+    const source = allLotes.find((l) => l.id === sourceId);
+    if (!source) return;
+    // Acrescenta (não substitui), criando novos ids para evitar conflito.
+    const copied: Operacao[] = source.operacoes.map((o) => ({
+      id: uuid(),
+      nome: o.nome,
+      metaPorHora: o.metaPorHora,
+    }));
+    update('operacoes', [...form.operacoes, ...copied]);
+    setCopyOpen(false);
+  };
 
   const addOperacao = () =>
     update('operacoes', [...form.operacoes, { id: uuid(), nome: '', metaPorHora: 60 }]);
@@ -176,6 +197,15 @@ export default function LoteFormPage() {
         title="Operações"
         onAdd={addOperacao}
         empty={form.operacoes.length === 0 ? 'Nenhuma operação adicionada.' : undefined}
+        extraAction={
+          <button
+            type="button"
+            onClick={openCopy}
+            className="text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md"
+          >
+            Copiar
+          </button>
+        }
       >
         {form.operacoes.map((op, idx) => (
           <div key={op.id} className="flex gap-3 items-end">
@@ -263,6 +293,49 @@ export default function LoteFormPage() {
         </button>
       </div>
 
+      {copyOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={() => setCopyOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xl font-semibold">Copiar operações de outro lote</h3>
+              <button type="button" onClick={() => setCopyOpen(false)} className="text-slate-500 hover:text-slate-700">×</button>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">
+              Selecione o lote de origem. As operações serão acrescentadas (sem substituir as atuais).
+            </p>
+            {allLotes.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">Nenhum outro lote com operações cadastradas.</p>
+            ) : (
+              <ul className="space-y-2">
+                {allLotes.map((l) => (
+                  <li key={l.id}>
+                    <button
+                      type="button"
+                      onClick={() => copyOperacoesFrom(l.id)}
+                      className="w-full text-left border border-slate-200 rounded-md p-3 hover:border-slate-400"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold">{l.codigo}</span>
+                        <span className="text-xs text-slate-500">{l.operacoes.length} operação(ões)</span>
+                      </div>
+                      <p className="text-sm text-slate-600 truncate">{l.nome}</p>
+                      <p className="text-xs text-slate-500 mt-1 truncate">
+                        {l.operacoes.map((o) => o.nome).join(', ')}
+                      </p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex justify-end mt-4">
+              <button type="button" onClick={() => setCopyOpen(false)} className="px-3 py-2 rounded-md border border-slate-300 bg-white text-sm">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`.input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
     </form>
   );
@@ -289,24 +362,29 @@ function Section({
   title,
   onAdd,
   empty,
+  extraAction,
   children,
 }: {
   title: string;
   onAdd: () => void;
   empty?: string;
+  extraAction?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold">{title}</h3>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md"
-        >
-          + Adicionar
-        </button>
+        <div className="flex items-center gap-2">
+          {extraAction}
+          <button
+            type="button"
+            onClick={onAdd}
+            className="text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md"
+          >
+            + Adicionar
+          </button>
+        </div>
       </div>
       {empty ? <p className="text-sm text-slate-500">{empty}</p> : children}
     </div>

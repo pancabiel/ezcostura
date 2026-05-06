@@ -6,6 +6,10 @@ export const alocacoesApi = {
     const { data: rows } = await api.get<AlocacaoWire[]>('/alocacoes', { params: { data } });
     return rows;
   },
+  async listByDataRange(inicio: string, fim: string): Promise<AlocacaoWire[]> {
+    const { data: rows } = await api.get<AlocacaoWire[]>('/alocacoes', { params: { inicio, fim } });
+    return rows;
+  },
   async create(payload: AlocacaoWire): Promise<AlocacaoWire> {
     const { data } = await api.post<AlocacaoWire>('/alocacoes', payload);
     return data;
