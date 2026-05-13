@@ -24,26 +24,6 @@ function nowHHMM(): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/**
- * Para uma alocação específica num dia, calcula `início → fim` onde
- * fim = início da próxima alocação (mesma data) OU fim do expediente.
- */
-function calcularInicioFim(
-  aloc: AlocacaoLocal,
-  todasDoDia: AlocacaoLocal[],
-  fimExpediente: string,
-): { inicio: string; fim: string } {
-  const sorted = todasDoDia
-    .filter((a) => !a.pendingDelete)
-    .sort((a, b) => a.horarioInicio.localeCompare(b.horarioInicio));
-  const idx = sorted.findIndex((a) => a.id === aloc.id);
-  const inicio = aloc.horarioInicio.slice(0, 5);
-  const proxima = idx >= 0 && idx + 1 < sorted.length ? sorted[idx + 1] : null;
-  const proximoInicio = proxima ? proxima.horarioInicio.slice(0, 5) : null;
-  const fim = proximoInicio && proximoInicio < fimExpediente ? proximoInicio : fimExpediente;
-  return { inicio, fim };
-}
-
 export default function PackModal({ operarioId, operarioNome, data, alocacoes, lotes, onClose }: Props) {
   const vigente = useMemo(() => alocacoesRepo.pickVigente(alocacoes, new Date()), [alocacoes]);
 
@@ -69,7 +49,6 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
       operarioId, data, jornadas, diasEspeciais, jornadaIdDoOperario: operario.jornadaId,
     });
   }, [operario, operarioId, data, jornadas, diasEspeciais]);
-  const fimExpediente = efetiva?.horaFim ?? '17:00';
 
   const selectedLote = useMemo(() => lotes.find((l) => l.id === loteId), [lotes, loteId]);
 
@@ -92,19 +71,13 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     }
   }, [selectedLote, operacaoId]);
 
-  // Auto-preenche tamanho com o último pack desta alocação (ou do lote+operação).
+  // Auto-preenche tamanho com o último pack do lote+operação.
   useEffect(() => {
     if (!selectedLote || !operacaoId || tamanhoTouched) return;
     let cancelled = false;
     void (async () => {
-      const allAlocs = await db.alocacoes.toArray();
-      const alocIds = new Set(
-        allAlocs
-          .filter((a) => !a.pendingDelete && a.loteId === selectedLote.id && a.operacaoId === operacaoId)
-          .map((a) => a.id),
-      );
       const allPacks = (await db.packs.toArray()).filter(
-        (p) => !p.pendingDelete && alocIds.has(p.alocacaoId),
+        (p) => !p.pendingDelete && p.loteId === selectedLote.id && p.operacaoId === operacaoId,
       );
       if (cancelled) return;
       if (allPacks.length === 0) { setTamanho(''); return; }
@@ -119,17 +92,13 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     return () => { cancelled = true; };
   }, [selectedLote, operacaoId, tamanhoTouched]);
 
-  // Auto-preenche quantidade com o último pack do lote (preserva regra antiga).
+  // Auto-preenche quantidade com o último pack do lote.
   useEffect(() => {
     if (!selectedLote || quantidadeTouched) return;
     let cancelled = false;
     void (async () => {
-      const allAlocs = await db.alocacoes.toArray();
-      const alocIdsForLote = new Set(
-        allAlocs.filter((a) => a.loteId === selectedLote.id).map((a) => a.id),
-      );
       const allPacks = (await db.packs.toArray()).filter(
-        (p) => !p.pendingDelete && alocIdsForLote.has(p.alocacaoId),
+        (p) => !p.pendingDelete && p.loteId === selectedLote.id,
       );
       if (cancelled) return;
       if (allPacks.length === 0) { setQuantidade(0); return; }
@@ -144,15 +113,10 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     if (!selectedLote || !operacaoId || !tamanho) { setJaProduzido(0); return; }
     let cancelled = false;
     void (async () => {
-      const allAlocs = await db.alocacoes.toArray();
-      const alocIds = new Set(
-        allAlocs
-          .filter((a) => !a.pendingDelete && a.loteId === selectedLote.id && a.operacaoId === operacaoId)
-          .map((a) => a.id),
-      );
       const total = (await db.packs.toArray()).reduce((s, p) => {
         if (p.pendingDelete) return s;
-        if (!alocIds.has(p.alocacaoId)) return s;
+        if (p.loteId !== selectedLote.id) return s;
+        if (p.operacaoId !== operacaoId) return s;
         if (p.tamanho !== tamanho) return s;
         return s + p.quantidade;
       }, 0);
@@ -189,6 +153,16 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
       return;
     }
 
+    if (!selectedLote) {
+      setError('Lote inválido.');
+      return;
+    }
+    const operacao = selectedLote.operacoes.find((o) => o.id === operacaoId);
+    if (!operacao) {
+      setError('Operação inválida.');
+      return;
+    }
+
     setSaving(true);
     try {
       // Localiza alocação existente do operário+lote+operação no dia, ou cria.
@@ -206,6 +180,10 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
         operarioId, data,
         horario: new Date().toISOString(),
         alocacaoId: alocId,
+        loteId,
+        operacaoId,
+        loteCodigo: selectedLote.codigo,
+        operacaoNome: operacao.nome,
         quantidade,
         tamanho,
         registradoPor: session?.userId,
@@ -261,8 +239,8 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
                 const isVigente = vigente?.id === aloc?.id;
                 let label = op.nome;
                 if (aloc) {
-                  const { inicio, fim } = calcularInicioFim(aloc, alocacoes, fimExpediente);
-                  label = `${op.nome} — ${inicio} → ${fim}${isVigente ? ' (vigente)' : ''}`;
+                  const inicio = aloc.horarioInicio.slice(0, 5);
+                  label = `${op.nome} — ${inicio}${isVigente ? ' (vigente)' : ''}`;
                 }
                 return <option key={op.id} value={op.id}>{label}</option>;
               })}

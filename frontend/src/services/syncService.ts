@@ -235,6 +235,10 @@ async function pushPacks() {
         data: local.data,
         horario: local.horario,
         alocacaoId: serverIdOrLocal(await db.alocacoes.get(local.alocacaoId), local.alocacaoId),
+        loteId: serverIdOrLocal(await db.lotes.get(local.loteId), local.loteId),
+        operacaoId: local.operacaoId,
+        loteCodigo: local.loteCodigo,
+        operacaoNome: local.operacaoNome,
         quantidade: local.quantidade,
         tamanho: local.tamanho,
         registradoPor: local.registradoPor,
@@ -410,29 +414,46 @@ async function pullOperarios() {
   }
 }
 
+// Date-scoped pulls are fire-and-forget from page useEffects. Dexie already has
+// the last-synced data, so a failed pull is benign — swallow & log instead of
+// surfacing as an unhandled rejection (e.g. when an in-flight request resolves
+// after logout/unmount).
+async function safePull(label: string, fn: () => Promise<void>) {
+  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
+  try {
+    await fn();
+  } catch (err) {
+    console.warn(`[sync] ${label} failed:`, err);
+  }
+}
+
 /** Pull alocações for a specific date — called by pages when they mount/change date. */
 export async function pullAlocacoesForDate(data: string) {
-  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
-  const remote = await alocacoesApi.listByData(data);
-  await reconcileAlocacoes(remote);
+  await safePull('pullAlocacoesForDate', async () => {
+    const remote = await alocacoesApi.listByData(data);
+    await reconcileAlocacoes(remote);
+  });
 }
 
 export async function pullPacksForDate(data: string) {
-  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
-  const remote = await packsApi.listByData(data);
-  await reconcilePacks(remote);
+  await safePull('pullPacksForDate', async () => {
+    const remote = await packsApi.listByData(data);
+    await reconcilePacks(remote);
+  });
 }
 
 export async function pullAlocacoesForRange(inicio: string, fim: string) {
-  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
-  const remote = await alocacoesApi.listByDataRange(inicio, fim);
-  await reconcileAlocacoes(remote);
+  await safePull('pullAlocacoesForRange', async () => {
+    const remote = await alocacoesApi.listByDataRange(inicio, fim);
+    await reconcileAlocacoes(remote);
+  });
 }
 
 export async function pullPacksForRange(inicio: string, fim: string) {
-  if (!getSession() || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
-  const remote = await packsApi.listByDataRange(inicio, fim);
-  await reconcilePacks(remote);
+  await safePull('pullPacksForRange', async () => {
+    const remote = await packsApi.listByDataRange(inicio, fim);
+    await reconcilePacks(remote);
+  });
 }
 
 async function reconcileAlocacoes(remote: AlocacaoWire[]) {
@@ -468,11 +489,16 @@ async function reconcilePacks(remote: PackWire[]) {
     if (localByServer.has(r.id)) continue;
     const operario = await findLocalByServerId(db.operarios, r.operarioId);
     const aloc = await findLocalByServerId(db.alocacoes, r.alocacaoId);
+    const lote = await findLocalByServerId(db.lotes, r.loteId);
     await db.packs.add({
       id: r.id, serverId: r.id,
       operarioId: operario?.id ?? r.operarioId,
       data: r.data, horario: r.horario,
       alocacaoId: aloc?.id ?? r.alocacaoId,
+      loteId: lote?.id ?? r.loteId,
+      operacaoId: r.operacaoId,
+      loteCodigo: r.loteCodigo,
+      operacaoNome: r.operacaoNome,
       quantidade: r.quantidade, tamanho: r.tamanho, registradoPor: r.registradoPor,
       syncStatus: 'synced', updatedAt: new Date().toISOString(),
     });

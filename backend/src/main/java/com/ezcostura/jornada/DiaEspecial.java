@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Table("dias_especiais")
@@ -31,7 +33,7 @@ public class DiaEspecial implements Persistable<UUID> {
     private List<DiaEspecialPausa> pausas = new ArrayList<>();
 
     @MappedCollection(idColumn = "dia_especial_id")
-    private List<DiaEspecialOperario> operarios = new ArrayList<>();
+    private Set<DiaEspecialOperario> operarios = new HashSet<>();
 
     @Override
     public UUID getId() { return id; }
@@ -62,6 +64,6 @@ public class DiaEspecial implements Persistable<UUID> {
     public List<DiaEspecialPausa> getPausas() { return pausas; }
     public void setPausas(List<DiaEspecialPausa> pausas) { this.pausas = pausas; }
 
-    public List<DiaEspecialOperario> getOperarios() { return operarios; }
-    public void setOperarios(List<DiaEspecialOperario> operarios) { this.operarios = operarios; }
+    public Set<DiaEspecialOperario> getOperarios() { return operarios; }
+    public void setOperarios(Set<DiaEspecialOperario> operarios) { this.operarios = operarios; }
 }

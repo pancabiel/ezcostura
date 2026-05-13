@@ -7,6 +7,10 @@ export interface PackLocal {
   data: string;       // ISO date (YYYY-MM-DD)
   horario: string;    // ISO datetime
   alocacaoId: string;
+  loteId: string;
+  operacaoId: string;
+  loteCodigo: string;
+  operacaoNome: string;
   quantidade: number;
   tamanho: string;
   registradoPor?: string;
@@ -22,6 +26,10 @@ export interface PackWire {
   data: string;
   horario: string;
   alocacaoId: string;
+  loteId: string;
+  operacaoId: string;
+  loteCodigo: string;
+  operacaoNome: string;
   quantidade: number;
   tamanho: string;
   registradoPor?: string;

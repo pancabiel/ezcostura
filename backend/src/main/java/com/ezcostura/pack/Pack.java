@@ -20,6 +20,10 @@ public class Pack implements Persistable<UUID> {
     private LocalDate data;
     private OffsetDateTime horario;
     private UUID alocacaoId;
+    private UUID loteId;
+    private UUID operacaoId;
+    private String loteCodigo;
+    private String operacaoNome;
     private int quantidade;
     private String tamanho;
     private UUID registradoPor;
@@ -44,6 +48,18 @@ public class Pack implements Persistable<UUID> {
 
     public UUID getAlocacaoId() { return alocacaoId; }
     public void setAlocacaoId(UUID alocacaoId) { this.alocacaoId = alocacaoId; }
+
+    public UUID getLoteId() { return loteId; }
+    public void setLoteId(UUID loteId) { this.loteId = loteId; }
+
+    public UUID getOperacaoId() { return operacaoId; }
+    public void setOperacaoId(UUID operacaoId) { this.operacaoId = operacaoId; }
+
+    public String getLoteCodigo() { return loteCodigo; }
+    public void setLoteCodigo(String loteCodigo) { this.loteCodigo = loteCodigo; }
+
+    public String getOperacaoNome() { return operacaoNome; }
+    public void setOperacaoNome(String operacaoNome) { this.operacaoNome = operacaoNome; }
 
     public int getQuantidade() { return quantidade; }
     public void setQuantidade(int quantidade) { this.quantidade = quantidade; }

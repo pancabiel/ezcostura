@@ -9,7 +9,9 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Table("jornadas")
@@ -29,7 +31,7 @@ public class Jornada implements Persistable<UUID> {
     private List<Pausa> pausas = new ArrayList<>();
 
     @MappedCollection(idColumn = "jornada_id")
-    private List<JornadaDiaSemana> diasSemana = new ArrayList<>();
+    private Set<JornadaDiaSemana> diasSemana = new HashSet<>();
 
     @Override
     public UUID getId() { return id; }
@@ -57,6 +59,6 @@ public class Jornada implements Persistable<UUID> {
     public List<Pausa> getPausas() { return pausas; }
     public void setPausas(List<Pausa> pausas) { this.pausas = pausas; }
 
-    public List<JornadaDiaSemana> getDiasSemana() { return diasSemana; }
-    public void setDiasSemana(List<JornadaDiaSemana> diasSemana) { this.diasSemana = diasSemana; }
+    public Set<JornadaDiaSemana> getDiasSemana() { return diasSemana; }
+    public void setDiasSemana(Set<JornadaDiaSemana> diasSemana) { this.diasSemana = diasSemana; }
 }

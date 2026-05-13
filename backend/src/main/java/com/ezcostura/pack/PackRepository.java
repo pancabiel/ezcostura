@@ -31,10 +31,10 @@ public interface PackRepository extends CrudRepository<Pack, UUID> {
     );
 
     @Query(
-      "SELECT a.lote_id, COALESCE(SUM(p.quantidade), 0) AS total " +
-      "FROM packs p JOIN alocacoes a ON a.id = p.alocacao_id " +
-      "WHERE p.data BETWEEN :inicio AND :fim " +
-      "GROUP BY a.lote_id"
+      "SELECT lote_id, COALESCE(SUM(quantidade), 0) AS total " +
+      "FROM packs " +
+      "WHERE data BETWEEN :inicio AND :fim " +
+      "GROUP BY lote_id"
     )
     List<ProducaoPorLote> producaoPorLote(
         @Param("inicio") LocalDate inicio,
@@ -42,9 +42,8 @@ public interface PackRepository extends CrudRepository<Pack, UUID> {
     );
 
     @Query(
-      "SELECT COALESCE(SUM(p.quantidade), 0) " +
-      "FROM packs p JOIN alocacoes a ON a.id = p.alocacao_id " +
-      "WHERE a.lote_id = :loteId AND p.tamanho = :tamanho AND a.operacao_id = :operacaoId"
+      "SELECT COALESCE(SUM(quantidade), 0) FROM packs " +
+      "WHERE lote_id = :loteId AND tamanho = :tamanho AND operacao_id = :operacaoId"
     )
     long sumByLoteTamanhoOperacao(
         @Param("loteId") UUID loteId,

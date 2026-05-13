@@ -42,12 +42,26 @@ public class PackService {
 
     @Transactional
     public PackDto create(PackDto dto) {
-        validateLimit(dto);
+        var aloc = alocacaoRepository.findById(dto.alocacaoId())
+            .orElseThrow(() -> new IllegalArgumentException("Alocação não encontrada."));
+        Lote lote = loteRepository.findById(aloc.getLoteId())
+            .orElseThrow(() -> new IllegalArgumentException("Lote não encontrado."));
+        var operacao = lote.getOperacoes().stream()
+            .filter(o -> o.getId().equals(aloc.getOperacaoId()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Operação não encontrada no lote."));
+        validateLimit(dto, lote, operacao.getId());
+
         Pack p = new Pack();
         p.setId(dto.id() != null ? dto.id() : UUID.randomUUID());
         p.markNew();
         p.setCreatedAt(OffsetDateTime.now());
         PackMapper.apply(dto, p);
+        // Snapshot autoritativo do servidor — ignora os campos derivados que vieram do cliente.
+        p.setLoteId(lote.getId());
+        p.setOperacaoId(operacao.getId());
+        p.setLoteCodigo(lote.getCodigo());
+        p.setOperacaoNome(operacao.getNome());
         return PackMapper.toDto(repository.save(p));
     }
 
@@ -59,18 +73,14 @@ public class PackService {
         repository.deleteById(id);
     }
 
-    private void validateLimit(PackDto dto) {
-        var aloc = alocacaoRepository.findById(dto.alocacaoId())
-            .orElseThrow(() -> new IllegalArgumentException("Alocação não encontrada."));
-        Lote lote = loteRepository.findById(aloc.getLoteId())
-            .orElseThrow(() -> new IllegalArgumentException("Lote não encontrado."));
+    private void validateLimit(PackDto dto, Lote lote, UUID operacaoId) {
         var tamanho = lote.getTamanhos().stream()
             .filter(t -> t.getTamanho().equals(dto.tamanho()))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException(
                 "Tamanho '" + dto.tamanho() + "' não cadastrado no lote."));
         long jaProduzido = repository.sumByLoteTamanhoOperacao(
-            lote.getId(), dto.tamanho(), aloc.getOperacaoId());
+            lote.getId(), dto.tamanho(), operacaoId);
         long total = jaProduzido + dto.quantidade();
         if (total > tamanho.getQuantidade()) {
             long restante = Math.max(0, tamanho.getQuantidade() - jaProduzido);

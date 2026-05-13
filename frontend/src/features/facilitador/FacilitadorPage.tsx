@@ -71,7 +71,6 @@ export default function FacilitadorPage() {
     [],
   ) ?? [];
   const loteById = useMemo(() => new Map(lotes.map((l) => [l.id, l])), [lotes]);
-  const alocById = useMemo(() => new Map(alocacoes.map((a) => [a.id, a])), [alocacoes]);
 
   const ausenciaByOperario = useMemo(() => {
     const m = new Map<string, AusenciaLocal>();
@@ -187,9 +186,6 @@ export default function FacilitadorPage() {
                     <summary className="cursor-pointer text-slate-600">Histórico ({opPacks.length})</summary>
                     <ul className="mt-2 space-y-1">
                       {opPacks.map((p) => {
-                        const aloc = alocById.get(p.alocacaoId);
-                        const lote = aloc ? loteById.get(aloc.loteId) : undefined;
-                        const operacao = aloc ? lote?.operacoes.find((o) => o.id === aloc.operacaoId) : undefined;
                         return (
                           <li key={p.id} className="flex items-center justify-between gap-2 text-slate-600">
                             <span className="flex-1 min-w-0">
@@ -197,7 +193,7 @@ export default function FacilitadorPage() {
                               {' · '}
                               <span className="font-semibold text-slate-900">{p.quantidade} pçs</span>
                               {' · '}
-                              {lote?.codigo ?? '?'} · tam {p.tamanho} · {operacao?.nome ?? '?'}
+                              {p.loteCodigo} · tam {p.tamanho} · {p.operacaoNome}
                             </span>
                             <button
                               onClick={() => confirm('Remover este pack?') && packsRepo.markDeleted(p.id)}

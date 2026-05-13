@@ -4,6 +4,7 @@ import com.ezcostura.jornada.dto.DiaSemanaOverrideDto;
 import com.ezcostura.jornada.dto.JornadaDto;
 import com.ezcostura.jornada.dto.PausaDto;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ final class JornadaMapper {
                 p.getTipo(), p.getDiaSemana()))
             .toList();
         List<DiaSemanaOverrideDto> ds = j.getDiasSemana().stream()
+            .sorted(Comparator.comparing(JornadaDiaSemana::getDiaSemana))
             .map(d -> new DiaSemanaOverrideDto(d.getId(), d.getDiaSemana(), d.getHoraInicio(), d.getHoraFim()))
             .toList();
         return new JornadaDto(j.getId(), j.getNome(), j.getHoraInicio(), j.getHoraFim(), ps, ds, j.getUpdatedAt());
