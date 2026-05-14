@@ -1,0 +1,144 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Don't let two deploys race each other onto the same VM.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build backend JAR
+        working-directory: backend
+        run: mvn -B -DskipTests package
+
+      - name: Stage backend JAR
+        run: |
+          mkdir -p artifacts
+          cp backend/target/ezcostura-backend-*.jar artifacts/app.jar
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload backend JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: artifacts/app.jar
+          retention-days: 14
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 14
+
+  deploy:
+    name: Deploy to prod
+    needs: build
+    runs-on: ubuntu-latest
+    # Re-running just this job from the Actions UI works as long as the build
+    # artifacts are still in retention (14 days above).
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download backend JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: artifacts/
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend-dist/
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Ship artifacts to server
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" 'rm -rf /tmp/ezcostura-deploy && mkdir -p /tmp/ezcostura-deploy/web'
+          scp -i ~/.ssh/deploy_key artifacts/app.jar "$SSH_USER@$SSH_HOST:/tmp/ezcostura-deploy/app.jar"
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" frontend-dist/ "$SSH_USER@$SSH_HOST:/tmp/ezcostura-deploy/web/"
+
+      - name: Apply on server
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" 'bash -se' <<'EOF'
+            set -euo pipefail
+
+            cd /opt/ezcostura
+
+            # Pull latest source so docker-compose files + Dockerfile.runtime match what was just built.
+            git fetch --quiet origin main
+            git checkout main
+            git pull --ff-only origin main
+
+            # Place the freshly built JAR where Dockerfile.runtime expects it.
+            cp /tmp/ezcostura-deploy/app.jar backend/app.jar
+
+            # Rebuild only the backend image (single COPY layer — fast) and restart it.
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --build backend
+
+            # Swap the SPA Caddy serves.
+            sudo rsync -a --delete /tmp/ezcostura-deploy/web/ /opt/ezcostura/web/
+            sudo chown -R caddy:caddy /opt/ezcostura/web
+
+            # Cleanup.
+            rm -rf /tmp/ezcostura-deploy backend/app.jar
+
+            # Smoke-check: GET on a POST-only endpoint — returns 405 once Spring is up.
+            for i in $(seq 1 30); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/auth/login || true)
+              if [ "$code" = "405" ]; then
+                echo "Backend responding (405 as expected)."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Backend did not return 405 within 60s." >&2
+            docker compose logs --tail=80 backend
+            exit 1
+          EOF

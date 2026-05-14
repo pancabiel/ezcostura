@@ -28,6 +28,7 @@ export default function Layout() {
             {isAdmin && <NavItem to="/relatorios">Relatórios</NavItem>}
             {isAdmin && <NavItem to="/configuracoes/jornada">Jornadas</NavItem>}
             {isAdmin && <NavItem to="/configuracoes/dias-especiais">Dias especiais</NavItem>}
+            <NavItem to="/configuracoes/senha">Senha</NavItem>
           </nav>
         </div>
         <div className="flex items-center gap-3">

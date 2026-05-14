@@ -13,6 +13,7 @@ import JornadasListPage from './features/jornada/JornadasListPage';
 import JornadaFormPage from './features/jornada/JornadaFormPage';
 import DiasEspeciaisPage from './features/jornada/DiasEspeciaisPage';
 import AusenciasPage from './features/ausencias/AusenciasPage';
+import SenhaPage from './features/configuracoes/SenhaPage';
 import { useAuthStore } from './stores/authStore';
 
 export default function App() {
@@ -128,6 +129,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/configuracoes/senha" element={<SenhaPage />} />
         <Route
           path="/configuracoes/dias-especiais"
           element={

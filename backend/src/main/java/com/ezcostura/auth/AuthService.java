@@ -1,5 +1,6 @@
 package com.ezcostura.auth;
 
+import com.ezcostura.auth.dto.ChangePasswordRequest;
 import com.ezcostura.auth.dto.LoginRequest;
 import com.ezcostura.auth.dto.RefreshRequest;
 import com.ezcostura.auth.dto.TokenResponse;
@@ -72,6 +73,21 @@ public class AuthService {
                 tenantId,
                 role
             );
+        });
+    }
+
+    public void changePassword(UUID userId, String tenantId, ChangePasswordRequest request) {
+        ensureTenantKnown(tenantId);
+        runForTenant(tenantId, () -> {
+            AppUser user = userRepository.findById(userId)
+                .filter(AppUser::isAtivo)
+                .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
+            if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+                throw new BadCredentialsException("Senha atual incorreta");
+            }
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+            userRepository.save(user);
+            return null;
         });
     }
 

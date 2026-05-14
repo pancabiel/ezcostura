@@ -1,0 +1,9 @@
+# Override applied during CI deploy. Swaps the backend's multi-stage build
+# (which runs Maven inside the container) for a tiny runtime image that just
+# wraps a JAR built by GitHub Actions. Use as:
+#   docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --build backend
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.runtime

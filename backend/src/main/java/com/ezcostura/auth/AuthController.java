@@ -1,9 +1,11 @@
 package com.ezcostura.auth;
 
+import com.ezcostura.auth.dto.ChangePasswordRequest;
 import com.ezcostura.auth.dto.LoginRequest;
 import com.ezcostura.auth.dto.RefreshRequest;
 import com.ezcostura.auth.dto.TokenResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,5 +31,13 @@ public class AuthController {
     @PostMapping("/refresh")
     public Mono<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return Mono.fromCallable(() -> service.refresh(request)).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @PostMapping("/change-password")
+    public Mono<Void> changePassword(@AuthenticationPrincipal AuthenticatedPrincipal principal,
+                                     @Valid @RequestBody ChangePasswordRequest request) {
+        return Mono.<Void>fromRunnable(() ->
+            service.changePassword(principal.userId(), principal.tenantId(), request)
+        ).subscribeOn(Schedulers.boundedElastic()).then();
     }
 }
