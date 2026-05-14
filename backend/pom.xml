@@ -131,33 +131,4 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>desktop</id>
-            <dependencies>
-                <dependency>
-                    <groupId>io.zonky.test</groupId>
-                    <artifactId>embedded-postgres</artifactId>
-                    <version>2.0.7</version>
-                </dependency>
-                <dependency>
-                    <groupId>io.zonky.test.postgres</groupId>
-                    <artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
-                    <version>16.2.0</version>
-                </dependency>
-            </dependencies>
-            <build>
-                <finalName>ezcostura-desktop</finalName>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <mainClass>com.ezcostura.desktop.DesktopMain</mainClass>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

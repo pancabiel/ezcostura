@@ -14,9 +14,7 @@ A small clothing factory (the "first customer") needed to replace handwritten pa
 
 - **Tablet-first, offline-first.** Wi-Fi inside the factory is unreliable. Registering a pack must work with no connection and must take **≤ 3 taps**.
 - **Multi-tenant from v1.** The owner intends to sell the same product to other facções later. Bolt-on multi-tenancy is painful, so it was built in from the start.
-- **Two deployment modes:**
-  1. **SaaS** — Docker / cloud, multiple tenants in one Postgres.
-  2. **Desktop edition** — a single self-contained Windows bundle (Spring Boot + embedded Postgres + jlinked JRE) for customers without internet, double-clickable, no Docker required.
+- **Deployed as Docker** — multiple tenants in one Postgres (schema-per-tenant).
 
 ---
 
@@ -145,22 +143,6 @@ Required env vars (see `.env.example` for the full list):
 
 ---
 
-## Desktop edition (single-PC install)
-
-For customers without internet or Docker. Builds a portable Windows bundle: Spring Boot fat-jar + embedded Postgres (Zonky) + a minimal JRE produced with `jlink`.
-
-```powershell
-cd installer
-.\build.ps1                # portable folder under installer\dist\ezcostura\
-.\build.ps1 -Installer     # also produces .exe (requires WiX 3 on PATH)
-```
-
-A per-installation JWT secret is generated on first run and persisted to `%APPDATA%\ezcostura\jwt.secret` — no shared key in the binary. Database lives in `%APPDATA%\ezcostura\pgdata`.
-
-See [`installer/README.md`](installer/README.md) for details.
-
----
-
 ## Security notes
 
 - **JWT secret validation.** `JwtService` refuses any secret shorter than 32 bytes and any blank value — no silent zero-padding.
@@ -188,7 +170,6 @@ backend/
     EzcosturaApplication.java
     auth/         # JWT auth, security config, default-admin guard
     config/       # tenant routing, per-tenant Flyway, CORS, error handling
-    desktop/      # standalone Windows entrypoint (embedded Postgres)
     lote/         # batches CRUD
     operario/     # operators CRUD
     alocacao/     # allocations (per-day per-operator planning)
@@ -199,7 +180,6 @@ backend/
   src/main/resources/
     application.yml          # base config (env-driven)
     application-prod.yml     # prod profile — no defaults
-    application-desktop.yml  # desktop profile — embedded Postgres
     db/migration/V*.sql      # Flyway migrations (run per-tenant)
 
 frontend/
@@ -219,7 +199,6 @@ frontend/
     stores/       # authStore, syncStore
     types/        # lote, operario, alocacao, pack
 
-installer/        # PowerShell script that builds the desktop bundle
 docker-compose.yml
 .env.example
 ```
