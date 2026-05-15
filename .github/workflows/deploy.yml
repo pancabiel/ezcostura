@@ -130,7 +130,9 @@ jobs:
             rm -rf /tmp/ezcostura-deploy backend/app.jar
 
             # Smoke-check: GET on a POST-only endpoint — returns 405 once Spring is up.
-            for i in $(seq 1 30); do
+            # 60 iters × 2s = 120s. Cold JVM + Flyway-per-tenant on a 2-vCPU VM
+            # routinely needs >60s.
+            for i in $(seq 1 60); do
               code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/auth/login || true)
               if [ "$code" = "405" ]; then
                 echo "Backend responding (405 as expected)."
@@ -138,7 +140,15 @@ jobs:
               fi
               sleep 2
             done
-            echo "Backend did not return 405 within 60s." >&2
-            docker compose logs --tail=80 backend
+            echo "Backend did not return 405 within 120s." >&2
+            echo "----- docker compose ps -----"
+            docker compose ps
+            echo "----- backend env (secrets redacted) -----"
+            docker compose exec -T backend env \
+              | grep -E '^(SPRING_|DB_HOST|DB_PORT|DB_NAME|EZCOSTURA_|INITIAL_TENANT|SENTRY_|SERVER_PORT)=' \
+              | sort \
+              || true
+            echo "----- backend logs (last 400 lines) -----"
+            docker compose logs --tail=400 --no-color backend
             exit 1
           EOF
