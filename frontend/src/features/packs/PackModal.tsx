@@ -4,7 +4,7 @@ import { packsRepo } from './packsRepo';
 import { alocacoesRepo } from '../alocacoes/alocacoesRepo';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import { getSession } from '../../stores/authStore';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
 
@@ -39,9 +39,9 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
   const [jaProduzido, setJaProduzido] = useState<number>(0);
   const session = getSession();
 
-  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
-  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
-  const operario = useLiveQuery(() => db.operarios.get(operarioId), [operarioId]);
+  const jornadas = useLiveQuery(() => getDb().jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => getDb().diasEspeciais.toArray(), []) ?? [];
+  const operario = useLiveQuery(() => getDb().operarios.get(operarioId), [operarioId]);
 
   const efetiva = useMemo(() => {
     if (!operario) return null;
@@ -76,7 +76,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     if (!selectedLote || !operacaoId || tamanhoTouched) return;
     let cancelled = false;
     void (async () => {
-      const allPacks = (await db.packs.toArray()).filter(
+      const allPacks = (await getDb().packs.toArray()).filter(
         (p) => !p.pendingDelete && p.loteId === selectedLote.id && p.operacaoId === operacaoId,
       );
       if (cancelled) return;
@@ -97,7 +97,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     if (!selectedLote || quantidadeTouched) return;
     let cancelled = false;
     void (async () => {
-      const allPacks = (await db.packs.toArray()).filter(
+      const allPacks = (await getDb().packs.toArray()).filter(
         (p) => !p.pendingDelete && p.loteId === selectedLote.id,
       );
       if (cancelled) return;
@@ -113,7 +113,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     if (!selectedLote || !operacaoId || !tamanho) { setJaProduzido(0); return; }
     let cancelled = false;
     void (async () => {
-      const total = (await db.packs.toArray()).reduce((s, p) => {
+      const total = (await getDb().packs.toArray()).reduce((s, p) => {
         if (p.pendingDelete) return s;
         if (p.loteId !== selectedLote.id) return s;
         if (p.operacaoId !== operacaoId) return s;

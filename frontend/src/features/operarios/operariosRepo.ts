@@ -1,10 +1,10 @@
 import { v4 as uuid } from 'uuid';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import type { OperarioLocal } from '../../types/operario';
 
 export const operariosRepo = {
   async list(): Promise<OperarioLocal[]> {
-    const all = await db.operarios.toArray();
+    const all = await getDb().operarios.toArray();
     return all
       .filter((o) => !o.pendingDelete)
       .sort((a, b) => a.nome.localeCompare(b.nome));
@@ -16,7 +16,7 @@ export const operariosRepo = {
   },
 
   async get(id: string): Promise<OperarioLocal | undefined> {
-    return db.operarios.get(id);
+    return getDb().operarios.get(id);
   },
 
   async create(input: Omit<OperarioLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<OperarioLocal> {
@@ -26,14 +26,14 @@ export const operariosRepo = {
       syncStatus: 'pending',
       updatedAt: new Date().toISOString(),
     };
-    await db.operarios.add(o);
+    await getDb().operarios.add(o);
     return o;
   },
 
   async update(id: string, patch: Partial<OperarioLocal>): Promise<void> {
-    const existing = await db.operarios.get(id);
+    const existing = await getDb().operarios.get(id);
     if (!existing) return;
-    await db.operarios.put({
+    await getDb().operarios.put({
       ...existing,
       ...patch,
       id,
@@ -43,13 +43,13 @@ export const operariosRepo = {
   },
 
   async markDeleted(id: string): Promise<void> {
-    const existing = await db.operarios.get(id);
+    const existing = await getDb().operarios.get(id);
     if (!existing) return;
     if (!existing.serverId) {
-      await db.operarios.delete(id);
+      await getDb().operarios.delete(id);
       return;
     }
-    await db.operarios.put({
+    await getDb().operarios.put({
       ...existing,
       pendingDelete: true,
       syncStatus: 'pending',

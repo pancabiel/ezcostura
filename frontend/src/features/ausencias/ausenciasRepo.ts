@@ -1,21 +1,21 @@
 import { v4 as uuid } from 'uuid';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import type { AusenciaLocal, TipoAusencia } from '../../types/ausencia';
 
 export const ausenciasRepo = {
   async list(): Promise<AusenciaLocal[]> {
-    const all = await db.ausencias.toArray();
+    const all = await getDb().ausencias.toArray();
     return all
       .filter((a) => !a.pendingDelete)
       .sort((a, b) => b.dataInicio.localeCompare(a.dataInicio));
   },
 
   async get(id: string): Promise<AusenciaLocal | undefined> {
-    return db.ausencias.get(id);
+    return getDb().ausencias.get(id);
   },
 
   async listActiveOn(data: string): Promise<AusenciaLocal[]> {
-    const all = await db.ausencias.toArray();
+    const all = await getDb().ausencias.toArray();
     return all.filter(
       (a) => !a.pendingDelete && a.dataInicio <= data && a.dataFim >= data,
     );
@@ -34,14 +34,14 @@ export const ausenciasRepo = {
       syncStatus: 'pending',
       updatedAt: new Date().toISOString(),
     };
-    await db.ausencias.add(a);
+    await getDb().ausencias.add(a);
     return a;
   },
 
   async update(id: string, patch: Partial<AusenciaLocal>): Promise<void> {
-    const existing = await db.ausencias.get(id);
+    const existing = await getDb().ausencias.get(id);
     if (!existing) return;
-    await db.ausencias.put({
+    await getDb().ausencias.put({
       ...existing,
       ...patch,
       id,
@@ -51,13 +51,13 @@ export const ausenciasRepo = {
   },
 
   async markDeleted(id: string): Promise<void> {
-    const existing = await db.ausencias.get(id);
+    const existing = await getDb().ausencias.get(id);
     if (!existing) return;
     if (!existing.serverId) {
-      await db.ausencias.delete(id);
+      await getDb().ausencias.delete(id);
       return;
     }
-    await db.ausencias.put({
+    await getDb().ausencias.put({
       ...existing,
       pendingDelete: true,
       syncStatus: 'pending',

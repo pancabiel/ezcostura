@@ -5,8 +5,9 @@ import type { AlocacaoLocal } from '../types/alocacao';
 import type { PackLocal } from '../types/pack';
 import type { AusenciaLocal } from '../types/ausencia';
 import type { JornadaLocal, DiaEspecialLocal } from '../types/jornada';
+import { getSession } from '../stores/authStore';
 
-class EzcosturaDb extends Dexie {
+export class EzcosturaDb extends Dexie {
   lotes!: Table<LoteLocal, string>;
   operarios!: Table<OperarioLocal, string>;
   alocacoes!: Table<AlocacaoLocal, string>;
@@ -15,8 +16,8 @@ class EzcosturaDb extends Dexie {
   jornadas!: Table<JornadaLocal, string>;
   diasEspeciais!: Table<DiaEspecialLocal, string>;
 
-  constructor() {
-    super('ezcostura');
+  constructor(name: string) {
+    super(name);
     this.version(1).stores({
       lotes: 'id, serverId, codigo, syncStatus, updatedAt',
     });
@@ -52,4 +53,34 @@ class EzcosturaDb extends Dexie {
   }
 }
 
-export const db = new EzcosturaDb();
+const instances = new Map<string, EzcosturaDb>();
+
+function dbNameFor(tenantId: string): string {
+  return `ezcostura_${tenantId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
+}
+
+// Pre-multi-tenant builds stored everything in a single `ezcostura` database,
+// which leaked data between tenants on the same browser. Delete it on first
+// load so the orphan doesn't linger.
+if (typeof indexedDB !== 'undefined') {
+  void Dexie.delete('ezcostura').catch(() => undefined);
+}
+
+// Each tenant gets its own IndexedDB database, so data cannot leak when the
+// same browser is used to log into different tenants in sequence.
+export function getDb(): EzcosturaDb {
+  const tenantId = getSession()?.tenantId;
+  if (!tenantId) {
+    throw new Error('getDb() called without an active session');
+  }
+  let inst = instances.get(tenantId);
+  if (!inst) {
+    inst = new EzcosturaDb(dbNameFor(tenantId));
+    instances.set(tenantId, inst);
+  }
+  return inst;
+}
+
+export function hasDbForCurrentSession(): boolean {
+  return !!getSession()?.tenantId;
+}

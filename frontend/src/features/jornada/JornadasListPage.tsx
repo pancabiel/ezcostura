@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { normalizeTime } from './jornadaRepo';
 
 export default function JornadasListPage() {
   const jornadas = useLiveQuery(async () => {
-    const all = await db.jornadas.toArray();
+    const all = await getDb().jornadas.toArray();
     return all.filter((j) => !j.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome));
   }, []) ?? [];
 

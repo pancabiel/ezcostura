@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { lotesRepo } from './lotesRepo';
 import type { LoteLocal, SyncStatus } from '../../types/lote';
 
@@ -9,7 +9,7 @@ export default function LotesListPage() {
   const [query, setQuery] = useState('');
 
   const lotes = useLiveQuery(async () => {
-    const all = await db.lotes.toArray();
+    const all = await getDb().lotes.toArray();
     return all
       .filter((l) => !l.pendingDelete)
       .sort((a, b) => a.codigo.localeCompare(b.codigo));

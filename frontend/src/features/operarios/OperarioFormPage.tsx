@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { operariosRepo } from './operariosRepo';
 
 interface FormState {
@@ -28,7 +28,7 @@ export default function OperarioFormPage() {
   const isEdit = Boolean(id);
 
   const jornadas = useLiveQuery(
-    async () => (await db.jornadas.toArray()).filter((j) => !j.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome)),
+    async () => (await getDb().jornadas.toArray()).filter((j) => !j.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome)),
     [],
   ) ?? [];
 

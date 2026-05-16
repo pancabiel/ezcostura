@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { alocacoesRepo } from './alocacoesRepo';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import type { AlocacaoLocal } from '../../types/alocacao';
@@ -18,10 +18,10 @@ interface Props {
 export default function AlocacaoModal({
   operarioId, operarioNome, data, alocacao, defaultHorario, onClose,
 }: Props) {
-  const lotes = useLiveQuery(() => db.lotes.toArray(), []) ?? [];
-  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
-  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
-  const operario = useLiveQuery(() => db.operarios.get(operarioId), [operarioId]);
+  const lotes = useLiveQuery(() => getDb().lotes.toArray(), []) ?? [];
+  const jornadas = useLiveQuery(() => getDb().jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => getDb().diasEspeciais.toArray(), []) ?? [];
+  const operario = useLiveQuery(() => getDb().operarios.get(operarioId), [operarioId]);
 
   const efetiva = useMemo(() => {
     if (!operario) return null;

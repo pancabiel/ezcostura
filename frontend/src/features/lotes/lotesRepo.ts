@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import type { LoteLocal } from '../../types/lote';
 
 /**
@@ -9,14 +9,14 @@ import type { LoteLocal } from '../../types/lote';
  */
 export const lotesRepo = {
   async list(): Promise<LoteLocal[]> {
-    const all = await db.lotes.toArray();
+    const all = await getDb().lotes.toArray();
     return all
       .filter((l) => !l.pendingDelete)
       .sort((a, b) => a.codigo.localeCompare(b.codigo));
   },
 
   async get(id: string): Promise<LoteLocal | undefined> {
-    return db.lotes.get(id);
+    return getDb().lotes.get(id);
   },
 
   async create(input: Omit<LoteLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<LoteLocal> {
@@ -26,14 +26,14 @@ export const lotesRepo = {
       syncStatus: 'pending',
       updatedAt: new Date().toISOString(),
     };
-    await db.lotes.add(lote);
+    await getDb().lotes.add(lote);
     return lote;
   },
 
   async update(id: string, patch: Partial<LoteLocal>): Promise<void> {
-    const existing = await db.lotes.get(id);
+    const existing = await getDb().lotes.get(id);
     if (!existing) return;
-    await db.lotes.put({
+    await getDb().lotes.put({
       ...existing,
       ...patch,
       id,
@@ -43,14 +43,14 @@ export const lotesRepo = {
   },
 
   async markDeleted(id: string): Promise<void> {
-    const existing = await db.lotes.get(id);
+    const existing = await getDb().lotes.get(id);
     if (!existing) return;
     if (!existing.serverId) {
       // never synced — safe to drop locally
-      await db.lotes.delete(id);
+      await getDb().lotes.delete(id);
       return;
     }
-    await db.lotes.put({
+    await getDb().lotes.put({
       ...existing,
       pendingDelete: true,
       syncStatus: 'pending',

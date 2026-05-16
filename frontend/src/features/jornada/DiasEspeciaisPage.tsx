@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuid } from 'uuid';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { diasEspeciaisRepo, normalizeTime } from './jornadaRepo';
 import type { DiaEspecialLocal, DiaEspecialPausaWire, TipoPausa } from '../../types/jornada';
 
@@ -22,11 +22,11 @@ const FIXED_NOME: Record<Exclude<TipoPausa, 'OUTRO'>, string> = {
 
 export default function DiasEspeciaisPage() {
   const dias = useLiveQuery(
-    async () => (await db.diasEspeciais.toArray()).filter((d) => !d.pendingDelete).sort((a, b) => b.data.localeCompare(a.data)),
+    async () => (await getDb().diasEspeciais.toArray()).filter((d) => !d.pendingDelete).sort((a, b) => b.data.localeCompare(a.data)),
     [],
   ) ?? [];
   const operarios = useLiveQuery(
-    async () => (await db.operarios.toArray()).filter((o) => !o.pendingDelete && o.ativo).sort((a, b) => a.nome.localeCompare(b.nome)),
+    async () => (await getDb().operarios.toArray()).filter((o) => !o.pendingDelete && o.ativo).sort((a, b) => a.nome.localeCompare(b.nome)),
     [],
   ) ?? [];
 

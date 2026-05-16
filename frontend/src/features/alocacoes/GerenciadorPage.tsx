@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import DateNav from '../../components/DateNav';
 import AlocacaoModal from './AlocacaoModal';
 import { pullAlocacoesForDate } from '../../services/syncService';
@@ -23,18 +23,18 @@ export default function GerenciadorPage() {
   }, [data]);
 
   const operarios = useLiveQuery(async () => {
-    const all = await db.operarios.toArray();
+    const all = await getDb().operarios.toArray();
     return all
       .filter((o) => o.ativo && !o.pendingDelete)
       .sort((a, b) => a.nome.localeCompare(b.nome));
   }, []) ?? [];
 
   const alocacoes = useLiveQuery(
-    async () => db.alocacoes.where('data').equals(data).toArray(),
+    async () => getDb().alocacoes.where('data').equals(data).toArray(),
     [data],
   ) ?? [];
 
-  const lotes = useLiveQuery(() => db.lotes.toArray(), []) ?? [];
+  const lotes = useLiveQuery(() => getDb().lotes.toArray(), []) ?? [];
   const loteById = useMemo(() => new Map(lotes.map((l) => [l.id, l])), [lotes]);
 
   const allocByOperario = useMemo(() => {

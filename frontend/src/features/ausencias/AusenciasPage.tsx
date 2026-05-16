@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { ausenciasRepo } from './ausenciasRepo';
 import AusenciaModal from './AusenciaModal';
 import type { AusenciaLocal, TipoAusencia } from '../../types/ausencia';
@@ -25,14 +25,14 @@ export default function AusenciasPage() {
   const [filtroOperario, setFiltroOperario] = useState<string>('');
 
   const ausencias = useLiveQuery(
-    async () => (await db.ausencias.toArray())
+    async () => (await getDb().ausencias.toArray())
       .filter((a) => !a.pendingDelete)
       .sort((a, b) => b.dataInicio.localeCompare(a.dataInicio)),
     [],
   ) ?? [];
 
   const operarios = useLiveQuery(
-    async () => (await db.operarios.toArray())
+    async () => (await getDb().operarios.toArray())
       .filter((o) => !o.pendingDelete)
       .sort((a, b) => a.nome.localeCompare(b.nome)),
     [],

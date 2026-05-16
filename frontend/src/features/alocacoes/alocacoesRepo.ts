@@ -1,24 +1,24 @@
 import { v4 as uuid } from 'uuid';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import type { AlocacaoLocal } from '../../types/alocacao';
 
 export const alocacoesRepo = {
   async listByData(data: string): Promise<AlocacaoLocal[]> {
-    const all = await db.alocacoes.where('data').equals(data).toArray();
+    const all = await getDb().alocacoes.where('data').equals(data).toArray();
     return all
       .filter((a) => !a.pendingDelete)
       .sort((a, b) => a.horarioInicio.localeCompare(b.horarioInicio));
   },
 
   async listByOperarioAndData(operarioId: string, data: string): Promise<AlocacaoLocal[]> {
-    const rows = await db.alocacoes.where('[operarioId+data]').equals([operarioId, data]).toArray();
+    const rows = await getDb().alocacoes.where('[operarioId+data]').equals([operarioId, data]).toArray();
     return rows
       .filter((a) => !a.pendingDelete)
       .sort((a, b) => a.horarioInicio.localeCompare(b.horarioInicio));
   },
 
   async get(id: string): Promise<AlocacaoLocal | undefined> {
-    return db.alocacoes.get(id);
+    return getDb().alocacoes.get(id);
   },
 
   async create(input: Omit<AlocacaoLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<AlocacaoLocal> {
@@ -28,14 +28,14 @@ export const alocacoesRepo = {
       syncStatus: 'pending',
       updatedAt: new Date().toISOString(),
     };
-    await db.alocacoes.add(a);
+    await getDb().alocacoes.add(a);
     return a;
   },
 
   async update(id: string, patch: Partial<AlocacaoLocal>): Promise<void> {
-    const existing = await db.alocacoes.get(id);
+    const existing = await getDb().alocacoes.get(id);
     if (!existing) return;
-    await db.alocacoes.put({
+    await getDb().alocacoes.put({
       ...existing,
       ...patch,
       id,
@@ -45,13 +45,13 @@ export const alocacoesRepo = {
   },
 
   async markDeleted(id: string): Promise<void> {
-    const existing = await db.alocacoes.get(id);
+    const existing = await getDb().alocacoes.get(id);
     if (!existing) return;
     if (!existing.serverId) {
-      await db.alocacoes.delete(id);
+      await getDb().alocacoes.delete(id);
       return;
     }
-    await db.alocacoes.put({
+    await getDb().alocacoes.put({
       ...existing,
       pendingDelete: true,
       syncStatus: 'pending',

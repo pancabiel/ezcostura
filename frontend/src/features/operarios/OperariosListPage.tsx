@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import { operariosRepo } from './operariosRepo';
 import type { OperarioLocal } from '../../types/operario';
 
@@ -12,7 +12,7 @@ export default function OperariosListPage() {
   const [filtro, setFiltro] = useState<Filtro>('ativos');
 
   const operarios = useLiveQuery(async () => {
-    const all = await db.operarios.toArray();
+    const all = await getDb().operarios.toArray();
     return all.filter((o) => !o.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome));
   }, []);
 

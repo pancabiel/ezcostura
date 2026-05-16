@@ -1,4 +1,4 @@
-import { db } from '../db/dexie';
+import { getDb, hasDbForCurrentSession } from '../db/dexie';
 import { lotesApi } from '../features/lotes/lotesApi';
 import { operariosApi } from '../features/operarios/operariosApi';
 import { alocacoesApi } from '../features/alocacoes/alocacoesApi';
@@ -81,6 +81,7 @@ async function runOnce(): Promise<void> {
 }
 
 async function pushJornadas() {
+  const db = getDb();
   const pending = await db.jornadas.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -108,6 +109,7 @@ async function pushJornadas() {
 }
 
 async function pushLotes() {
+  const db = getDb();
   const pending = await db.lotes.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -135,6 +137,7 @@ async function pushLotes() {
 }
 
 async function pushOperarios() {
+  const db = getDb();
   const pending = await db.operarios.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -164,6 +167,7 @@ async function pushOperarios() {
 }
 
 async function pushDiasEspeciais() {
+  const db = getDb();
   const pending = await db.diasEspeciais.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -194,6 +198,7 @@ async function pushDiasEspeciais() {
 }
 
 async function pushAlocacoes() {
+  const db = getDb();
   const pending = await db.alocacoes.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -221,6 +226,7 @@ async function pushAlocacoes() {
 }
 
 async function pushPacks() {
+  const db = getDb();
   const pending = await db.packs.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -252,6 +258,7 @@ async function pushPacks() {
 }
 
 async function pushAusencias() {
+  const db = getDb();
   const pending = await db.ausencias.where('syncStatus').equals('pending').toArray();
   for (const local of pending) {
     try {
@@ -279,6 +286,7 @@ async function pushAusencias() {
 }
 
 async function pullJornadas() {
+  const db = getDb();
   const remote = await jornadaApi.list();
   const localByServer = new Map<string, JornadaLocal>();
   for (const j of await db.jornadas.toArray()) if (j.serverId) localByServer.set(j.serverId, j);
@@ -305,6 +313,7 @@ async function pullJornadas() {
 }
 
 async function pullDiasEspeciais() {
+  const db = getDb();
   const remote = await diasEspeciaisApi.list();
   const localByServer = new Map<string, DiaEspecialLocal>();
   for (const d of await db.diasEspeciais.toArray()) if (d.serverId) localByServer.set(d.serverId, d);
@@ -336,6 +345,7 @@ async function pullDiasEspeciais() {
 }
 
 async function pullAusencias() {
+  const db = getDb();
   const remote = await ausenciasApi.list();
   const localByServer = new Map<string, AusenciaLocal>();
   for (const a of await db.ausencias.toArray()) if (a.serverId) localByServer.set(a.serverId, a);
@@ -363,6 +373,7 @@ async function pullAusencias() {
 }
 
 async function pullLotes() {
+  const db = getDb();
   const remote = await lotesApi.list();
   const localByServer = new Map<string, LoteLocal>();
   for (const l of await db.lotes.toArray()) if (l.serverId) localByServer.set(l.serverId, l);
@@ -387,6 +398,7 @@ async function pullLotes() {
 }
 
 async function pullOperarios() {
+  const db = getDb();
   const remote = await operariosApi.list();
   const localByServer = new Map<string, OperarioLocal>();
   for (const o of await db.operarios.toArray()) if (o.serverId) localByServer.set(o.serverId, o);
@@ -457,6 +469,7 @@ export async function pullPacksForRange(inicio: string, fim: string) {
 }
 
 async function reconcileAlocacoes(remote: AlocacaoWire[]) {
+  const db = getDb();
   const localByServer = new Map<string, AlocacaoLocal>();
   for (const a of await db.alocacoes.toArray()) if (a.serverId) localByServer.set(a.serverId, a);
   for (const r of remote) {
@@ -483,6 +496,7 @@ async function reconcileAlocacoes(remote: AlocacaoWire[]) {
 }
 
 async function reconcilePacks(remote: PackWire[]) {
+  const db = getDb();
   const localByServer = new Map<string, PackLocal>();
   for (const p of await db.packs.toArray()) if (p.serverId) localByServer.set(p.serverId, p);
   for (const r of remote) {
@@ -523,6 +537,11 @@ async function markError<T>(table: import('dexie').Table<T, string>, id: string,
 }
 
 async function refreshPendingCount(): Promise<void> {
+  if (!hasDbForCurrentSession()) {
+    useSyncStore.getState().setPendingCount(0);
+    return;
+  }
+  const db = getDb();
   const counts = await Promise.all([
     db.lotes.where('syncStatus').equals('pending').count(),
     db.operarios.where('syncStatus').equals('pending').count(),

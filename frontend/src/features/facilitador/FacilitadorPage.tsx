@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import DateNav from '../../components/DateNav';
 import PackModal from '../packs/PackModal';
 import AlocacaoModal from '../alocacoes/AlocacaoModal';
@@ -45,29 +45,29 @@ export default function FacilitadorPage() {
     return () => clearInterval(t);
   }, []);
 
-  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
-  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
+  const jornadas = useLiveQuery(() => getDb().jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => getDb().diasEspeciais.toArray(), []) ?? [];
 
   const operarios = useLiveQuery(
-    async () => (await db.operarios.toArray())
+    async () => (await getDb().operarios.toArray())
       .filter((o) => o.ativo && !o.pendingDelete)
       .sort((a, b) => a.nome.localeCompare(b.nome)),
     [],
   ) ?? [];
 
   const alocacoes = useLiveQuery(
-    async () => db.alocacoes.where('data').equals(data).toArray(),
+    async () => getDb().alocacoes.where('data').equals(data).toArray(),
     [data],
   ) ?? [];
 
   const packs = useLiveQuery(
-    async () => db.packs.where('data').equals(data).toArray(),
+    async () => getDb().packs.where('data').equals(data).toArray(),
     [data],
   ) ?? [];
 
-  const lotes = useLiveQuery(() => db.lotes.toArray(), []) ?? [];
+  const lotes = useLiveQuery(() => getDb().lotes.toArray(), []) ?? [];
   const ausencias = useLiveQuery(
-    async () => (await db.ausencias.toArray()).filter((a) => !a.pendingDelete),
+    async () => (await getDb().ausencias.toArray()).filter((a) => !a.pendingDelete),
     [],
   ) ?? [];
   const loteById = useMemo(() => new Map(lotes.map((l) => [l.id, l])), [lotes]);

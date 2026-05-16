@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { api } from '../../lib/axios';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import {
   pullAlocacoesForDate,
   pullAlocacoesForRange,
@@ -165,10 +165,10 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const operarios = useLiveQuery(() => db.operarios.toArray(), []) ?? [];
-  const lotes = useLiveQuery(() => db.lotes.toArray(), []) ?? [];
-  const jornadas = useLiveQuery(() => db.jornadas.toArray(), []) ?? [];
-  const diasEspeciais = useLiveQuery(() => db.diasEspeciais.toArray(), []) ?? [];
+  const operarios = useLiveQuery(() => getDb().operarios.toArray(), []) ?? [];
+  const lotes = useLiveQuery(() => getDb().lotes.toArray(), []) ?? [];
+  const jornadas = useLiveQuery(() => getDb().jornadas.toArray(), []) ?? [];
+  const diasEspeciais = useLiveQuery(() => getDb().diasEspeciais.toArray(), []) ?? [];
 
   const operarioByServer = useMemo(
     () => new Map(operarios.map((o) => [o.serverId ?? o.id, o])),
@@ -183,11 +183,11 @@ export default function RelatoriosPage() {
 
   // Alocações e packs do período (cacheadas em Dexie após pull em batch).
   const alocacoesPeriodo = useLiveQuery(
-    async () => (await db.alocacoes.toArray()).filter((a) => !a.pendingDelete && a.data >= inicio && a.data <= fim),
+    async () => (await getDb().alocacoes.toArray()).filter((a) => !a.pendingDelete && a.data >= inicio && a.data <= fim),
     [inicio, fim],
   ) ?? [];
   const packsPeriodo = useLiveQuery(
-    async () => (await db.packs.toArray()).filter((p) => !p.pendingDelete && p.data >= inicio && p.data <= fim),
+    async () => (await getDb().packs.toArray()).filter((p) => !p.pendingDelete && p.data >= inicio && p.data <= fim),
     [inicio, fim],
   ) ?? [];
 
@@ -201,7 +201,7 @@ export default function RelatoriosPage() {
   );
   const ausenciasDia = useLiveQuery(
     async () => {
-      const all = await db.ausencias.toArray();
+      const all = await getDb().ausencias.toArray();
       return all.filter(
         (a) => !a.pendingDelete && a.dataInicio <= diaDetalhe && diaDetalhe <= a.dataFim,
       );

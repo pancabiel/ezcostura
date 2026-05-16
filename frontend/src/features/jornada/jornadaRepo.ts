@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { db } from '../../db/dexie';
+import { getDb } from '../../db/dexie';
 import type {
   DiaEspecialLocal,
   JornadaEfetiva,
@@ -9,11 +9,11 @@ import type {
 
 export const jornadasRepo = {
   async list(): Promise<JornadaLocal[]> {
-    const all = await db.jornadas.toArray();
+    const all = await getDb().jornadas.toArray();
     return all.filter((j) => !j.pendingDelete).sort((a, b) => a.nome.localeCompare(b.nome));
   },
   async get(id: string): Promise<JornadaLocal | undefined> {
-    return db.jornadas.get(id);
+    return getDb().jornadas.get(id);
   },
   async create(input: Omit<JornadaLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<JornadaLocal> {
     const j: JornadaLocal = {
@@ -22,13 +22,13 @@ export const jornadasRepo = {
       syncStatus: 'pending',
       updatedAt: new Date().toISOString(),
     };
-    await db.jornadas.add(j);
+    await getDb().jornadas.add(j);
     return j;
   },
   async update(id: string, patch: Partial<JornadaLocal>): Promise<void> {
-    const existing = await db.jornadas.get(id);
+    const existing = await getDb().jornadas.get(id);
     if (!existing) return;
-    await db.jornadas.put({
+    await getDb().jornadas.put({
       ...existing,
       ...patch,
       id,
@@ -37,13 +37,13 @@ export const jornadasRepo = {
     });
   },
   async markDeleted(id: string): Promise<void> {
-    const existing = await db.jornadas.get(id);
+    const existing = await getDb().jornadas.get(id);
     if (!existing) return;
     if (!existing.serverId) {
-      await db.jornadas.delete(id);
+      await getDb().jornadas.delete(id);
       return;
     }
-    await db.jornadas.put({
+    await getDb().jornadas.put({
       ...existing,
       pendingDelete: true,
       syncStatus: 'pending',
@@ -54,7 +54,7 @@ export const jornadasRepo = {
 
 export const diasEspeciaisRepo = {
   async list(): Promise<DiaEspecialLocal[]> {
-    const all = await db.diasEspeciais.toArray();
+    const all = await getDb().diasEspeciais.toArray();
     return all.filter((d) => !d.pendingDelete).sort((a, b) => b.data.localeCompare(a.data));
   },
   async create(input: Omit<DiaEspecialLocal, 'id' | 'syncStatus' | 'updatedAt'>): Promise<DiaEspecialLocal> {
@@ -64,13 +64,13 @@ export const diasEspeciaisRepo = {
       syncStatus: 'pending',
       updatedAt: new Date().toISOString(),
     };
-    await db.diasEspeciais.add(d);
+    await getDb().diasEspeciais.add(d);
     return d;
   },
   async update(id: string, patch: Partial<DiaEspecialLocal>): Promise<void> {
-    const existing = await db.diasEspeciais.get(id);
+    const existing = await getDb().diasEspeciais.get(id);
     if (!existing) return;
-    await db.diasEspeciais.put({
+    await getDb().diasEspeciais.put({
       ...existing,
       ...patch,
       id,
@@ -79,13 +79,13 @@ export const diasEspeciaisRepo = {
     });
   },
   async markDeleted(id: string): Promise<void> {
-    const existing = await db.diasEspeciais.get(id);
+    const existing = await getDb().diasEspeciais.get(id);
     if (!existing) return;
     if (!existing.serverId) {
-      await db.diasEspeciais.delete(id);
+      await getDb().diasEspeciais.delete(id);
       return;
     }
-    await db.diasEspeciais.put({
+    await getDb().diasEspeciais.put({
       ...existing,
       pendingDelete: true,
       syncStatus: 'pending',
