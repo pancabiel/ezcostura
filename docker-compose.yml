@@ -36,6 +36,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (>=32 random bytes)}
       EZCOSTURA_CORS_ORIGINS: ${EZCOSTURA_CORS_ORIGINS:?set EZCOSTURA_CORS_ORIGINS in .env}
       INITIAL_TENANT: ${INITIAL_TENANT:-demo}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_DEBUG: ${SENTRY_DEBUG:-false}
     ports:
       - "8080:8080"
 

@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -34,6 +35,11 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error(HttpStatus.NOT_FOUND, ex.getMessage()));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleStaticNotFound(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error(HttpStatus.NOT_FOUND, "Not found"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

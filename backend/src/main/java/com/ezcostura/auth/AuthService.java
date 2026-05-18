@@ -92,9 +92,9 @@ public class AuthService {
     }
 
     private void ensureTenantKnown(String tenantId) {
-        // Lazily ensure the tenant pool is registered. If the tenant doesn't exist
-        // at all the underlying queries will fail, but registration itself is cheap.
-        routingDataSource.registerTenant(tenantId);
+        if (!routingDataSource.isRegistered(tenantId)) {
+            throw new BadCredentialsException("Facção não encontrada");
+        }
     }
 
     private <T> T runForTenant(String tenantId, java.util.function.Supplier<T> action) {

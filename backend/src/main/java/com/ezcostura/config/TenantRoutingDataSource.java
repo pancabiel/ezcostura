@@ -34,6 +34,10 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
         return TenantContext.get();
     }
 
+    public boolean isRegistered(String tenantId) {
+        return tenantId != null && tenantDataSources.containsKey(tenantId);
+    }
+
     public synchronized void registerTenant(String tenantId) {
         if (tenantDataSources.containsKey(tenantId)) {
             return;
