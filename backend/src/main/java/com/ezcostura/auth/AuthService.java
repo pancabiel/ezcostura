@@ -11,6 +11,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -32,8 +33,9 @@ public class AuthService {
     }
 
     public TokenResponse login(LoginRequest request) {
-        ensureTenantKnown(request.tenantId());
-        return runForTenant(request.tenantId(), () -> {
+        String tenantId = normalizeTenantId(request.tenantId());
+        ensureTenantKnown(tenantId);
+        return runForTenant(tenantId, () -> {
             AppUser user = userRepository.findByUsername(request.username())
                 .filter(AppUser::isAtivo)
                 .orElseThrow(() -> new BadCredentialsException("Usuário ou senha inválidos"));
@@ -42,11 +44,11 @@ public class AuthService {
             }
             Role role = Role.valueOf(user.getRole());
             return new TokenResponse(
-                jwtService.issueAccess(user.getId(), request.tenantId(), role),
-                jwtService.issueRefresh(user.getId(), request.tenantId(), role),
+                jwtService.issueAccess(user.getId(), tenantId, role),
+                jwtService.issueRefresh(user.getId(), tenantId, role),
                 user.getId(),
                 user.getUsername(),
-                request.tenantId(),
+                tenantId,
                 role
             );
         });
@@ -58,7 +60,7 @@ public class AuthService {
             throw new BadCredentialsException("Token inválido");
         }
         UUID userId = UUID.fromString(claims.getSubject());
-        String tenantId = claims.get("tenantId", String.class);
+        String tenantId = normalizeTenantId(claims.get("tenantId", String.class));
         Role role = Role.valueOf(claims.get("role", String.class));
         ensureTenantKnown(tenantId);
         return runForTenant(tenantId, () -> {
@@ -77,8 +79,9 @@ public class AuthService {
     }
 
     public void changePassword(UUID userId, String tenantId, ChangePasswordRequest request) {
-        ensureTenantKnown(tenantId);
-        runForTenant(tenantId, () -> {
+        String normalizedTenantId = normalizeTenantId(tenantId);
+        ensureTenantKnown(normalizedTenantId);
+        runForTenant(normalizedTenantId, () -> {
             AppUser user = userRepository.findById(userId)
                 .filter(AppUser::isAtivo)
                 .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
@@ -89,6 +92,10 @@ public class AuthService {
             userRepository.save(user);
             return null;
         });
+    }
+
+    private static String normalizeTenantId(String tenantId) {
+        return tenantId == null ? null : tenantId.trim().toLowerCase(Locale.ROOT);
     }
 
     private void ensureTenantKnown(String tenantId) {

@@ -6,6 +6,7 @@ import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 import javax.sql.DataSource;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,14 +36,15 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
     }
 
     public boolean isRegistered(String tenantId) {
-        return tenantId != null && tenantDataSources.containsKey(tenantId);
+        return tenantId != null && tenantDataSources.containsKey(canonical(tenantId));
     }
 
     public synchronized void registerTenant(String tenantId) {
-        if (tenantDataSources.containsKey(tenantId)) {
+        String canonical = canonical(tenantId);
+        if (tenantDataSources.containsKey(canonical)) {
             return;
         }
-        String schema = schemaFor(tenantId);
+        String schema = schemaFor(canonical);
         String separator = jdbcUrl.contains("?") ? "&" : "?";
         String tenantUrl = jdbcUrl + separator + "currentSchema=" + schema;
         HikariConfig cfg = new HikariConfig();
@@ -50,15 +52,19 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
         cfg.setUsername(username);
         cfg.setPassword(password);
         cfg.setMaximumPoolSize(5);
-        cfg.setPoolName("hikari-" + tenantId);
+        cfg.setPoolName("hikari-" + canonical);
         cfg.setConnectionInitSql("SET search_path TO \"" + schema + "\"");
         DataSource ds = new HikariDataSource(cfg);
-        tenantDataSources.put(tenantId, ds);
+        tenantDataSources.put(canonical, ds);
         setTargetDataSources(new HashMap<>(tenantDataSources));
         afterPropertiesSet();
     }
 
     public static String schemaFor(String tenantId) {
-        return "tenant_" + tenantId.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
+        return "tenant_" + tenantId.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase(Locale.ROOT);
+    }
+
+    private static String canonical(String tenantId) {
+        return tenantId.trim().toLowerCase(Locale.ROOT);
     }
 }
