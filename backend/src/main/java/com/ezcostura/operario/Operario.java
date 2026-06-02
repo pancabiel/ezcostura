@@ -22,6 +22,10 @@ public class Operario implements Persistable<UUID> {
     private LocalDate dataAdmissao;
     private boolean ativo;
     private UUID jornadaId;
+    private String pinHash;
+    private OffsetDateTime pinChangedAt;
+    private int pinFailedAttempts;
+    private OffsetDateTime pinLockedUntil;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -50,6 +54,18 @@ public class Operario implements Persistable<UUID> {
 
     public UUID getJornadaId() { return jornadaId; }
     public void setJornadaId(UUID jornadaId) { this.jornadaId = jornadaId; }
+
+    public String getPinHash() { return pinHash; }
+    public void setPinHash(String pinHash) { this.pinHash = pinHash; }
+
+    public OffsetDateTime getPinChangedAt() { return pinChangedAt; }
+    public void setPinChangedAt(OffsetDateTime pinChangedAt) { this.pinChangedAt = pinChangedAt; }
+
+    public int getPinFailedAttempts() { return pinFailedAttempts; }
+    public void setPinFailedAttempts(int pinFailedAttempts) { this.pinFailedAttempts = pinFailedAttempts; }
+
+    public OffsetDateTime getPinLockedUntil() { return pinLockedUntil; }
+    public void setPinLockedUntil(OffsetDateTime pinLockedUntil) { this.pinLockedUntil = pinLockedUntil; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

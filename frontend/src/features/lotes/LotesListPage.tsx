@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDb } from '../../db/dexie';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { lotesRepo } from './lotesRepo';
 import type { LoteLocal, SyncStatus } from '../../types/lote';
 
@@ -61,8 +62,15 @@ export default function LotesListPage() {
 }
 
 function LoteRow({ lote }: { lote: LoteLocal }) {
+  const confirm = useConfirm();
   const handleDelete = async () => {
-    if (!confirm(`Remover lote ${lote.codigo}?`)) return;
+    const ok = await confirm({
+      title: 'Remover lote',
+      message: `Remover lote ${lote.codigo}?`,
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    });
+    if (!ok) return;
     await lotesRepo.markDeleted(lote.id);
   };
 

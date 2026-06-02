@@ -36,7 +36,9 @@ public class JwtAuthFilter implements WebFilter {
 
     private static final List<String> PUBLIC_PATHS = List.of(
         "/api/auth/login",
-        "/api/auth/refresh"
+        "/api/auth/refresh",
+        "/api/auth/operario/login",
+        "/api/auth/operario/refresh"
     );
 
     private final JwtService jwtService;

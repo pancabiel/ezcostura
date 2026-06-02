@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDb } from '../../db/dexie';
 import { alocacoesRepo } from './alocacoesRepo';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
@@ -47,6 +48,7 @@ export default function AlocacaoModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   const lote: LoteLocal | undefined = useMemo(
     () => lotes.find((l) => l.id === loteId),
@@ -85,7 +87,13 @@ export default function AlocacaoModal({
 
   const remove = async () => {
     if (!alocacao) return;
-    if (!confirm('Remover esta alocação?')) return;
+    const ok = await confirm({
+      title: 'Remover alocação',
+      message: 'Remover esta alocação?',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    });
+    if (!ok) return;
     await alocacoesRepo.markDeleted(alocacao.id);
     onClose();
   };
@@ -105,6 +113,7 @@ export default function AlocacaoModal({
         <Field label="Horário de início">
           <div className="space-y-2">
             <input
+              autoFocus
               type="time"
               value={horarioInicio}
               onChange={(e) => setHorarioInicio(e.target.value)}

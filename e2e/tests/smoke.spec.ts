@@ -25,7 +25,7 @@ test.describe('ezcostura — admin walkthrough on Firefox', () => {
     const routes: { name: RegExp; path: RegExp }[] = [
       { name: /^Gerenciador$/, path: /\/gerenciador$/ },
       { name: /^Lotes$/, path: /\/lotes$/ },
-      { name: /^Operários$/, path: /\/operarios$/ },
+      { name: /^Funcionários$/, path: /\/operarios$/ },
       { name: /^Ausências$/, path: /\/ausencias$/ },
       { name: /^Relatórios$/, path: /\/relatorios$/ },
       { name: /^Jornadas$/, path: /\/configuracoes\/jornada$/ },

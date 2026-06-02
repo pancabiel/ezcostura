@@ -1,5 +1,6 @@
 package com.ezcostura.operario;
 
+import com.ezcostura.auth.dto.SetPinRequest;
 import com.ezcostura.config.ReactiveTenantHelper;
 import com.ezcostura.operario.dto.OperarioDto;
 import jakarta.validation.Valid;
@@ -60,6 +61,25 @@ public class OperarioController {
     public Mono<ResponseEntity<Void>> delete(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.delete(id);
+            return ResponseEntity.noContent().<Void>build();
+        });
+    }
+
+    @PostMapping("/{id}/pin")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> setPin(@PathVariable UUID id, @Valid @RequestBody SetPinRequest request) {
+        return ReactiveTenantHelper.runBlocking(() -> {
+            service.setPin(id, request.pin());
+            return null;
+        });
+    }
+
+    @DeleteMapping("/{id}/pin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Mono<ResponseEntity<Void>> removePin(@PathVariable UUID id) {
+        return ReactiveTenantHelper.runBlocking(() -> {
+            service.removePin(id);
             return ResponseEntity.noContent().<Void>build();
         });
     }

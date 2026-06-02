@@ -9,13 +9,14 @@ final class OperarioMapper {
         return new OperarioDto(
             o.getId(), o.getNome(), o.getCpf(), o.getTelefone(),
             o.getDataAdmissao(), o.isAtivo(), o.getJornadaId(),
+            o.getPinHash() != null,
             o.getCreatedAt(), o.getUpdatedAt()
         );
     }
 
     static void apply(OperarioDto dto, Operario target) {
         target.setNome(dto.nome());
-        target.setCpf(emptyToNull(dto.cpf()));
+        target.setCpf(normalizeCpf(dto.cpf()));
         target.setTelefone(emptyToNull(dto.telefone()));
         target.setDataAdmissao(dto.dataAdmissao());
         target.setAtivo(dto.ativo());
@@ -24,5 +25,12 @@ final class OperarioMapper {
 
     private static String emptyToNull(String s) {
         return s == null || s.isBlank() ? null : s;
+    }
+
+    // CPF persistido só com dígitos (login por CPF normaliza igual).
+    private static String normalizeCpf(String s) {
+        if (s == null) return null;
+        String digits = s.replaceAll("\\D", "");
+        return digits.isBlank() ? null : digits;
     }
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDb } from '../../db/dexie';
 import { ausenciasRepo } from './ausenciasRepo';
+import { useConfirm } from '../../components/ConfirmDialog';
 import AusenciaModal from './AusenciaModal';
 import type { AusenciaLocal, TipoAusencia } from '../../types/ausencia';
 
@@ -23,6 +24,17 @@ export default function AusenciasPage() {
   const [editing, setEditing] = useState<AusenciaLocal | null>(null);
   const [creating, setCreating] = useState(false);
   const [filtroOperario, setFiltroOperario] = useState<string>('');
+  const confirm = useConfirm();
+
+  const removeAusencia = async (id: string) => {
+    const ok = await confirm({
+      title: 'Remover ausência',
+      message: 'Remover esta ausência?',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    });
+    if (ok) await ausenciasRepo.markDeleted(id);
+  };
 
   const ausencias = useLiveQuery(
     async () => (await getDb().ausencias.toArray())
@@ -63,7 +75,7 @@ export default function AusenciasPage() {
           onChange={(e) => setFiltroOperario(e.target.value)}
           className="px-4 py-3 rounded-md border border-slate-300 bg-white"
         >
-          <option value="">Todos os operários</option>
+          <option value="">Todos os funcionários</option>
           {operarios.map((o) => (
             <option key={o.id} value={o.id}>{o.nome}</option>
           ))}
@@ -93,7 +105,7 @@ export default function AusenciasPage() {
                   </p>
                 </button>
                 <button
-                  onClick={() => confirm('Remover esta ausência?') && ausenciasRepo.markDeleted(a.id)}
+                  onClick={() => removeAusencia(a.id)}
                   className="text-rose-600 text-sm hover:underline shrink-0"
                 >
                   remover

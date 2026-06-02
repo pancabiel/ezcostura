@@ -2,5 +2,6 @@ package com.ezcostura.auth;
 
 public enum Role {
     ADMIN,
-    OPERADOR
+    OPERADOR,
+    OPERARIO_SELF
 }

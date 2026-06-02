@@ -34,12 +34,12 @@ export default function OperariosListPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold">Operários</h2>
+        <h2 className="text-2xl font-semibold">Funcionários</h2>
         <Link
           to="/operarios/novo"
           className="bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-800"
         >
-          + Novo operário
+          + Novo funcionário
         </Link>
       </div>
 
@@ -65,7 +65,7 @@ export default function OperariosListPage() {
         <p className="text-slate-500">Carregando…</p>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-md border border-slate-200 p-8 text-center text-slate-500">
-          Nenhum operário encontrado.
+          Nenhum funcionário encontrado.
         </div>
       ) : (
         <ul className="bg-white rounded-md border border-slate-200 divide-y divide-slate-100">

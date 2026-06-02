@@ -15,6 +15,7 @@ public record OperarioDto(
     @NotNull LocalDate dataAdmissao,
     boolean ativo,
     @NotNull UUID jornadaId,
+    boolean temPin,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt
 ) {}

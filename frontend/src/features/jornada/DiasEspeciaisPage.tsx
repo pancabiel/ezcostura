@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuid } from 'uuid';
 import { getDb } from '../../db/dexie';
 import { diasEspeciaisRepo, normalizeTime } from './jornadaRepo';
+import { useConfirm } from '../../components/ConfirmDialog';
 import type { DiaEspecialLocal, DiaEspecialPausaWire, TipoPausa } from '../../types/jornada';
 
 interface PausaForm extends DiaEspecialPausaWire {
@@ -42,7 +43,7 @@ export default function DiasEspeciaisPage() {
       </div>
 
       <p className="text-sm text-slate-500">
-        Sobrescreve o horário de trabalho para uma data específica e para os operários selecionados (ex.: véspera de feriado).
+        Sobrescreve o horário de trabalho para uma data específica e para os funcionários selecionados (ex.: véspera de feriado).
       </p>
 
       {dias.length === 0 ? (
@@ -71,7 +72,7 @@ export default function DiasEspeciaisPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1 truncate">
-                  {opNomes.length === 0 ? 'Nenhum operário' : opNomes.join(', ')}
+                  {opNomes.length === 0 ? 'Nenhum funcionário' : opNomes.join(', ')}
                 </p>
               </li>
             );
@@ -118,6 +119,7 @@ function DiaEspecialModal({
   const [opIds, setOpIds] = useState<Set<string>>(new Set(dia?.operarioIds ?? []));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     setError(null);
@@ -154,7 +156,7 @@ function DiaEspecialModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (horaFim <= horaInicio) { setError('Hora fim deve ser maior que hora início.'); return; }
-    if (opIds.size === 0) { setError('Selecione pelo menos um operário.'); return; }
+    if (opIds.size === 0) { setError('Selecione pelo menos um funcionário.'); return; }
     for (const p of pausas) {
       if (p.tipo === 'OUTRO' && !p.nome.trim()) { setError('Pausa do tipo Outro requer descrição.'); return; }
       if (p.horaFim <= p.horaInicio) { setError('Pausa com horário inválido.'); return; }
@@ -183,7 +185,13 @@ function DiaEspecialModal({
 
   const remove = async () => {
     if (!dia) return;
-    if (!confirm('Remover este dia especial?')) return;
+    const ok = await confirm({
+      title: 'Remover dia especial',
+      message: 'Remover este dia especial?',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    });
+    if (!ok) return;
     await diasEspeciaisRepo.markDeleted(dia.id);
     onClose();
   };
@@ -202,7 +210,7 @@ function DiaEspecialModal({
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Data">
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} className="input" required />
+              <input autoFocus type="date" value={data} onChange={(e) => setData(e.target.value)} className="input" required />
             </Field>
             <Field label="Descrição">
               <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className="input" placeholder="Ex.: Véspera de feriado" />
@@ -249,7 +257,7 @@ function DiaEspecialModal({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-slate-700">Operários ({opIds.size}/{ativosCount})</span>
+              <span className="text-sm font-medium text-slate-700">Funcionários ({opIds.size}/{ativosCount})</span>
               <div className="flex gap-2 text-xs">
                 <button type="button" onClick={() => setOpIds(new Set(operarios.map((o) => o.id)))} className="text-slate-700 hover:underline">
                   marcar todos
@@ -261,7 +269,7 @@ function DiaEspecialModal({
             </div>
             <div className="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto border border-slate-200 rounded-md p-2">
               {operarios.length === 0 ? (
-                <p className="text-xs text-slate-500 italic col-span-2">Nenhum operário ativo.</p>
+                <p className="text-xs text-slate-500 italic col-span-2">Nenhum funcionário ativo.</p>
               ) : operarios.map((o) => (
                 <label key={o.id} className="flex items-center gap-2 text-sm py-1 px-2 rounded hover:bg-slate-50 cursor-pointer">
                   <input type="checkbox" checked={opIds.has(o.id)} onChange={() => toggleOp(o.id)} className="h-4 w-4" />

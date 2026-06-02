@@ -2,6 +2,7 @@ package com.ezcostura.config;
 
 import com.ezcostura.alocacao.AlocacaoNotFoundException;
 import com.ezcostura.ausencia.AusenciaNotFoundException;
+import com.ezcostura.jornada.JornadaInUseException;
 import com.ezcostura.lote.LoteNotFoundException;
 import com.ezcostura.operario.OperarioNotFoundException;
 import com.ezcostura.pack.PackNotFoundException;
@@ -10,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -56,9 +58,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error(HttpStatus.CONFLICT, ex.getMessage()));
     }
 
+    @ExceptionHandler(JornadaInUseException.class)
+    public ResponseEntity<Map<String, Object>> handleJornadaInUse(JornadaInUseException ex) {
+        Map<String, Object> body = error(HttpStatus.CONFLICT, ex.getMessage());
+        body.put("operarios", ex.getOperarioNomes());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error(HttpStatus.UNAUTHORIZED, ex.getMessage()));
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<Map<String, Object>> handleLocked(LockedException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED).body(error(HttpStatus.LOCKED, ex.getMessage()));
     }
 
     @ExceptionHandler(WebExchangeBindException.class)

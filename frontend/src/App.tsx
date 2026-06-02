@@ -14,6 +14,10 @@ import JornadaFormPage from './features/jornada/JornadaFormPage';
 import DiasEspeciaisPage from './features/jornada/DiasEspeciaisPage';
 import AusenciasPage from './features/ausencias/AusenciasPage';
 import SenhaPage from './features/configuracoes/SenhaPage';
+import PortalLoginPage from './features/portal/PortalLoginPage';
+import PortalHomePage from './features/portal/PortalHomePage';
+import PortalChangePinPage from './features/portal/PortalChangePinPage';
+import PortalGuard from './features/portal/PortalGuard';
 import { useAuthStore } from './stores/authStore';
 
 export default function App() {
@@ -23,6 +27,25 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Portal do operário — fora do Layout admin (sem nav, sem sync badge) */}
+      <Route path="/meu/login" element={<PortalLoginPage />} />
+      <Route
+        path="/meu"
+        element={
+          <PortalGuard>
+            <PortalHomePage />
+          </PortalGuard>
+        }
+      />
+      <Route
+        path="/meu/pin"
+        element={
+          <PortalGuard>
+            <PortalChangePinPage />
+          </PortalGuard>
+        }
+      />
 
       <Route
         element={

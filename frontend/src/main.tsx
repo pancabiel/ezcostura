@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { ConfirmProvider } from './components/ConfirmDialog';
 import { startSyncService } from './services/syncService';
 import './index.css';
 
@@ -10,7 +11,9 @@ startSyncService();
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <ConfirmProvider>
+        <App />
+      </ConfirmProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

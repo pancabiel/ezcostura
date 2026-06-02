@@ -56,7 +56,7 @@ export default function GerenciadorPage() {
 
       {operarios.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-md p-8 text-center text-slate-500">
-          Nenhum operário ativo. Cadastre operários antes de planejar.
+          Nenhum funcionário ativo. Cadastre funcionários antes de planejar.
         </div>
       ) : (
         <ul className="space-y-3">

@@ -23,7 +23,7 @@ export default function Layout() {
             <NavItem to="/facilitador">Facilitador</NavItem>
             {isAdmin && <NavItem to="/gerenciador">Gerenciador</NavItem>}
             {isAdmin && <NavItem to="/lotes">Lotes</NavItem>}
-            {isAdmin && <NavItem to="/operarios">Operários</NavItem>}
+            {isAdmin && <NavItem to="/operarios">Funcionários</NavItem>}
             {isAdmin && <NavItem to="/ausencias">Ausências</NavItem>}
             {isAdmin && <NavItem to="/relatorios">Relatórios</NavItem>}
             {isAdmin && <NavItem to="/configuracoes/jornada">Jornadas</NavItem>}

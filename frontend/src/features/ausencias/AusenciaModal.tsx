@@ -32,7 +32,7 @@ export default function AusenciaModal({ ausencia, operarios, onClose }: Props) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!operarioId) { setError('Selecione um operário.'); return; }
+    if (!operarioId) { setError('Selecione um funcionário.'); return; }
     if (dataFim < dataInicio) { setError('Data fim deve ser maior ou igual à data início.'); return; }
     setSaving(true);
     try {
@@ -66,8 +66,8 @@ export default function AusenciaModal({ ausencia, operarios, onClose }: Props) {
 
         {error && <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">{error}</div>}
 
-        <Field label="Operário">
-          <select value={operarioId} onChange={(e) => setOperarioId(e.target.value)} className="input">
+        <Field label="Funcionário">
+          <select autoFocus value={operarioId} onChange={(e) => setOperarioId(e.target.value)} className="input">
             <option value="">Selecione…</option>
             {operarios.map((o) => (
               <option key={o.id} value={o.id}>{o.nome}</option>

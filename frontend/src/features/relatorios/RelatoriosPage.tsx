@@ -585,7 +585,7 @@ export default function RelatoriosPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <Kpi label="Total de peças" value={totalPecas.toLocaleString('pt-BR')} sub={`em ${diasComProducao} dia(s)`} />
         <Kpi label="Média por dia" value={mediaDia.toLocaleString('pt-BR')} sub="peças/dia" />
-        <Kpi label="Operários ativos" value={operariosAtivos} sub="produziram" />
+        <Kpi label="Funcionários ativos" value={operariosAtivos} sub="produziram" />
         <Kpi label="Lotes produzidos" value={lotesProduzidos} sub="no período" />
       </div>
 
@@ -600,7 +600,7 @@ export default function RelatoriosPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <section className="bg-white border border-slate-200 rounded-md p-4">
-          <h3 className="font-semibold mb-3">Top operários (peças)</h3>
+          <h3 className="font-semibold mb-3">Top funcionários (peças)</h3>
           <HBars data={topOperarios} color="#0f766e" />
         </section>
         <section className="bg-white border border-slate-200 rounded-md p-4">
@@ -612,13 +612,13 @@ export default function RelatoriosPage() {
       <section className="bg-white border border-slate-200 rounded-md p-4 space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 className="font-semibold">Desempenho por operário</h3>
+            <h3 className="font-semibold">Desempenho por funcionário</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Média do operário em cada operação e por dia no período.
+              Média do funcionário em cada operação e por dia no período.
             </p>
           </div>
           <label className="block">
-            <span className="block text-sm text-slate-700 mb-1">Operário</span>
+            <span className="block text-sm text-slate-700 mb-1">Funcionário</span>
             <select
               value={operarioFoco}
               onChange={(e) => setOperarioFoco(e.target.value)}
@@ -675,7 +675,7 @@ export default function RelatoriosPage() {
             <h3 className="font-semibold">Detalhe do dia</h3>
             <p className="text-xs text-slate-500 mt-1">
               Por alocação. Meta = meta/hora × horas trabalhadas (até a próxima alocação ou
-              fim de turno do operário), descontando pausas e ausências. Total do operário =
+              fim de turno do funcionário), descontando pausas e ausências. Total do funcionário =
               média das % de cada operação.
             </p>
           </div>

@@ -169,6 +169,7 @@ export default function LoteFormPage() {
       <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
         <Field label="Código">
           <input
+            autoFocus
             value={form.codigo}
             onChange={(e) => update('codigo', e.target.value)}
             className="input"

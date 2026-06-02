@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuid } from 'uuid';
+import axios from 'axios';
+import { getDb } from '../../db/dexie';
+import { jornadaApi } from './jornadaApi';
 import { jornadasRepo, normalizeTime, jornadaWorkingMinutes } from './jornadaRepo';
+import { useConfirm } from '../../components/ConfirmDialog';
 import type {
   DiaSemana,
   DiaSemanaOverrideWire,
@@ -52,6 +56,7 @@ export default function JornadaFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!id) return;
@@ -125,7 +130,7 @@ export default function JornadaFormPage() {
   const addOverride = (dia: DiaSemana) => {
     setOverrides((o) => [
       ...o,
-      { _key: uuid(), diaSemana: dia, horaInicio: '07:00', horaFim: '13:00' },
+      { _key: uuid(), diaSemana: dia, horaInicio, horaFim },
     ]);
   };
 
@@ -220,11 +225,36 @@ export default function JornadaFormPage() {
     }
   };
 
+  const [removing, setRemoving] = useState(false);
+
   const remove = async () => {
     if (!id) return;
-    if (!confirm('Remover esta jornada?')) return;
-    await jornadasRepo.markDeleted(id);
-    navigate('/configuracoes/jornada');
+    const ok = await confirm({
+      title: 'Remover jornada',
+      message: 'Remover esta jornada?',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setError(null);
+    setRemoving(true);
+    try {
+      const local = await getDb().jornadas.get(id);
+      if (local?.serverId) {
+        await jornadaApi.remove(local.serverId);
+      }
+      await getDb().jornadas.delete(id);
+      navigate('/configuracoes/jornada');
+    } catch (err) {
+      let msg = err instanceof Error ? err.message : String(err);
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; operarios?: string[] } | undefined;
+        if (data?.message) msg = data.message;
+      }
+      setError(msg);
+    } finally {
+      setRemoving(false);
+    }
   };
 
   if (loading) return <p className="text-slate-500">Carregando…</p>;
@@ -252,7 +282,7 @@ export default function JornadaFormPage() {
 
       <section className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
         <Field label="Nome">
-          <input value={nome} onChange={(e) => setNome(e.target.value)} className="input" placeholder="Ex.: Padrão, Meio período…" />
+          <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} className="input" placeholder="Ex.: Padrão, Meio período…" />
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Início">
@@ -348,8 +378,8 @@ export default function JornadaFormPage() {
 
       <div className="flex justify-end gap-3">
         {isEdit && (
-          <button type="button" onClick={remove} className="px-3 py-2 text-rose-700 hover:underline mr-auto">
-            Remover
+          <button type="button" onClick={remove} disabled={removing} className="px-3 py-2 text-rose-700 hover:underline mr-auto disabled:opacity-50">
+            {removing ? 'Removendo…' : 'Remover'}
           </button>
         )}
         <button type="button" onClick={() => navigate('/configuracoes/jornada')} className="px-4 py-2 rounded-md border border-slate-300 bg-white">

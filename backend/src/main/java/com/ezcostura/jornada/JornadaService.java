@@ -3,6 +3,7 @@ package com.ezcostura.jornada;
 import com.ezcostura.jornada.dto.DiaSemanaOverrideDto;
 import com.ezcostura.jornada.dto.JornadaDto;
 import com.ezcostura.jornada.dto.PausaDto;
+import com.ezcostura.operario.OperarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +18,11 @@ import java.util.UUID;
 public class JornadaService {
 
     private final JornadaRepository repository;
+    private final OperarioRepository operarioRepository;
 
-    public JornadaService(JornadaRepository repository) {
+    public JornadaService(JornadaRepository repository, OperarioRepository operarioRepository) {
         this.repository = repository;
+        this.operarioRepository = operarioRepository;
     }
 
     @Transactional(readOnly = true)
@@ -60,6 +63,12 @@ public class JornadaService {
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
             throw new JornadaNotFoundException(id);
+        }
+        List<String> nomes = operarioRepository.findAllByJornadaIdOrderByNomeAsc(id).stream()
+            .map(com.ezcostura.operario.Operario::getNome)
+            .toList();
+        if (!nomes.isEmpty()) {
+            throw new JornadaInUseException(nomes);
         }
         repository.deleteById(id);
     }

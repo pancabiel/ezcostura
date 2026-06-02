@@ -97,15 +97,15 @@ test('full production flow: jornada → operário → dia especial → lote → 
   // 2. OPERÁRIO — Maria, tied to the jornada we just made
   // ---------------------------------------------------------------------------
   await test.step('create operário tied to the new jornada', async () => {
-    await page.getByRole('link', { name: 'Operários' }).click();
+    await page.getByRole('link', { name: 'Funcionários' }).click();
     await page.waitForURL(/\/operarios$/);
-    await page.getByRole('link', { name: '+ Novo operário' }).click();
+    await page.getByRole('link', { name: '+ Novo funcionário' }).click();
     await page.waitForURL(/\/operarios\/novo$/);
 
     await safeFill(page.getByLabel('Nome'), operarioNome);
     await page.getByLabel('Jornada de trabalho').selectOption({ label: jornadaNome });
 
-    await page.getByRole('button', { name: 'Criar operário' }).click();
+    await page.getByRole('button', { name: 'Criar funcionário' }).click();
     await page.waitForURL(/\/operarios$/);
     await expect(page.getByText(operarioNome)).toBeVisible();
   });

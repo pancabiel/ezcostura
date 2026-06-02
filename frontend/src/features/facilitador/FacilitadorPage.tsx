@@ -6,6 +6,7 @@ import PackModal from '../packs/PackModal';
 import AlocacaoModal from '../alocacoes/AlocacaoModal';
 import { alocacoesRepo } from '../alocacoes/alocacoesRepo';
 import { packsRepo } from '../packs/packsRepo';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { resolverJornadaEfetiva, pausaAtiva } from '../jornada/jornadaRepo';
 import { pullAlocacoesForDate, pullPacksForDate } from '../../services/syncService';
 import type { OperarioLocal } from '../../types/operario';
@@ -34,6 +35,17 @@ export default function FacilitadorPage() {
   const [packTarget, setPackTarget] = useState<{ op: OperarioLocal; alocs: AlocacaoLocal[] } | null>(null);
   const [allocTarget, setAllocTarget] = useState<OperarioLocal | null>(null);
   const [now, setNow] = useState<Date>(new Date());
+  const confirm = useConfirm();
+
+  const removePack = async (id: string) => {
+    const ok = await confirm({
+      title: 'Remover pack',
+      message: 'Remover este pack?',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    });
+    if (ok) await packsRepo.markDeleted(id);
+  };
 
   useEffect(() => {
     void pullAlocacoesForDate(data);
@@ -129,7 +141,7 @@ export default function FacilitadorPage() {
 
       {operarios.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-md p-8 text-center text-slate-500">
-          Nenhum operário ativo.
+          Nenhum funcionário ativo.
         </div>
       ) : (
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,7 +208,7 @@ export default function FacilitadorPage() {
                               {p.loteCodigo} · tam {p.tamanho} · {p.operacaoNome}
                             </span>
                             <button
-                              onClick={() => confirm('Remover este pack?') && packsRepo.markDeleted(p.id)}
+                              onClick={() => removePack(p.id)}
                               className="text-rose-600 text-xs hover:underline shrink-0"
                             >
                               remover

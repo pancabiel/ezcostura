@@ -22,6 +22,23 @@ const empty: FormState = {
   jornadaId: '',
 };
 
+function formatCpf(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+function formatTelefone(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length === 0) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
 export default function OperarioFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,14 +61,14 @@ export default function OperarioFormPage() {
       const o = await operariosRepo.get(id);
       if (cancelled) return;
       if (!o) {
-        setError('Operário não encontrado.');
+        setError('Funcionário não encontrado.');
         setLoading(false);
         return;
       }
       setForm({
         nome: o.nome,
-        cpf: o.cpf ?? '',
-        telefone: o.telefone ?? '',
+        cpf: formatCpf(o.cpf ?? ''),
+        telefone: formatTelefone(o.telefone ?? ''),
         dataAdmissao: o.dataAdmissao,
         ativo: o.ativo,
         jornadaId: o.jornadaId,
@@ -110,7 +127,7 @@ export default function OperarioFormPage() {
   return (
     <form onSubmit={submit} className="max-w-xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">{isEdit ? 'Editar operário' : 'Novo operário'}</h2>
+        <h2 className="text-2xl font-semibold">{isEdit ? 'Editar funcionário' : 'Novo funcionário'}</h2>
         <button type="button" onClick={() => navigate('/operarios')} className="text-sm text-slate-600 hover:underline">
           Cancelar
         </button>
@@ -122,13 +139,25 @@ export default function OperarioFormPage() {
 
       <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
         <Field label="Nome">
-          <input value={form.nome} onChange={(e) => update('nome', e.target.value)} className="input" />
+          <input autoFocus value={form.nome} onChange={(e) => update('nome', e.target.value)} className="input" />
         </Field>
         <Field label="CPF">
-          <input value={form.cpf} onChange={(e) => update('cpf', e.target.value)} className="input" />
+          <input
+            value={form.cpf}
+            onChange={(e) => update('cpf', formatCpf(e.target.value))}
+            inputMode="numeric"
+            placeholder="000.000.000-00"
+            className="input"
+          />
         </Field>
         <Field label="Telefone">
-          <input value={form.telefone} onChange={(e) => update('telefone', e.target.value)} className="input" />
+          <input
+            value={form.telefone}
+            onChange={(e) => update('telefone', formatTelefone(e.target.value))}
+            inputMode="tel"
+            placeholder="(00) 00000-0000"
+            className="input"
+          />
         </Field>
         <Field label="Data de admissão">
           <input
@@ -172,7 +201,7 @@ export default function OperarioFormPage() {
           Cancelar
         </button>
         <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50">
-          {saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar operário'}
+          {saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar funcionário'}
         </button>
       </div>
 

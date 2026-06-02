@@ -26,7 +26,12 @@ public class SecurityConfig {
             .logout(ServerHttpSecurity.LogoutSpec::disable)
             .authorizeExchange(ex -> ex
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .pathMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
+                .pathMatchers(
+                    "/api/auth/login",
+                    "/api/auth/refresh",
+                    "/api/auth/operario/login",
+                    "/api/auth/operario/refresh"
+                ).permitAll()
                 .pathMatchers("/api/**").authenticated()
                 .anyExchange().permitAll()
             )
