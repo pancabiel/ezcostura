@@ -1,12 +1,15 @@
 package com.ezcostura.alocacao;
 
 import com.ezcostura.alocacao.dto.AlocacaoDto;
+import com.ezcostura.auth.AuthenticatedPrincipal;
+import com.ezcostura.auth.Role;
 import com.ezcostura.config.ReactiveTenantHelper;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -60,13 +63,22 @@ public class AlocacaoController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Mono<AlocacaoDto> create(@Valid @RequestBody AlocacaoDto dto) {
-        return ReactiveTenantHelper.runBlocking(() -> service.create(dto));
+    public Mono<AlocacaoDto> create(
+        @Valid @RequestBody AlocacaoDto dto,
+        @AuthenticationPrincipal AuthenticatedPrincipal principal
+    ) {
+        Role autor = principal != null ? principal.role() : null;
+        return ReactiveTenantHelper.runBlocking(() -> service.create(dto, autor));
     }
 
     @PutMapping("/{id}")
-    public Mono<AlocacaoDto> update(@PathVariable UUID id, @Valid @RequestBody AlocacaoDto dto) {
-        return ReactiveTenantHelper.runBlocking(() -> service.update(id, dto));
+    public Mono<AlocacaoDto> update(
+        @PathVariable UUID id,
+        @Valid @RequestBody AlocacaoDto dto,
+        @AuthenticationPrincipal AuthenticatedPrincipal principal
+    ) {
+        Role autor = principal != null ? principal.role() : null;
+        return ReactiveTenantHelper.runBlocking(() -> service.update(id, dto, autor));
     }
 
     @DeleteMapping("/{id}")

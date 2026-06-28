@@ -16,5 +16,5 @@ public record DesempenhoDiaDto(
     List<DesempenhoItemDto> itens,
     int totalMeta,
     int totalProduzido,
-    int totalPct
+    double totalPct
 ) {}

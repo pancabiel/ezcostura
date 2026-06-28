@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, fmtPct } from '@/lib/utils';
 
 function pctColor(pct: number) {
   if (pct >= 100) return { bar: 'bg-emerald-500', badge: 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300' };
@@ -108,7 +108,7 @@ export default function PortalSemanaPage() {
               <CardContent>
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">Total na semana</p>
-                  <Badge className={cn(cor.badge)}>{data.totalPct}%</Badge>
+                  <Badge className={cn(cor.badge)}>{fmtPct(data.totalPct)}%</Badge>
                 </div>
                 <p className="text-4xl font-bold text-foreground mt-1">
                   {data.totalProduzido}
@@ -172,7 +172,7 @@ export default function PortalSemanaPage() {
                             <span className="text-sm flex items-center gap-1">
                               <span className="font-mono font-semibold text-foreground">{d.totalProduzido}</span>
                               <span className="text-muted-foreground"> / {d.totalMeta}</span>
-                              <Badge className={cn('ml-1', c.badge)}>{d.totalPct}%</Badge>
+                              <Badge className={cn('ml-1', c.badge)}>{fmtPct(d.totalPct)}%</Badge>
                             </span>
                           )}
                         </div>

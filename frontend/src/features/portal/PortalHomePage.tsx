@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortalAuthStore } from '../../stores/portalAuthStore';
-import { meApi, type DesempenhoDia } from './portalApi';
+import { meApi, type DesempenhoDia, type MeuPack } from './portalApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn, fmtPct } from '@/lib/utils';
+
+/** HH:mm a partir de um timestamp ISO, no fuso do dispositivo (relógio do operário). */
+function horaCurta(iso: string): string {
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
 
 function pctColor(pct: number) {
   if (pct >= 100) return { bar: 'bg-emerald-500', badge: 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300' };
@@ -20,6 +25,8 @@ export default function PortalHomePage() {
   const session = usePortalAuthStore((s) => s.session);
   const setSession = usePortalAuthStore((s) => s.setSession);
   const [data, setData] = useState<DesempenhoDia | null>(null);
+  const [packs, setPacks] = useState<MeuPack[]>([]);
+  const [expandido, setExpandido] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -29,12 +36,31 @@ export default function PortalHomePage() {
     try {
       const d = await meApi.hoje();
       setData(d);
+      // Self-view: packs do mesmo dia que o backend considera "hoje" (d.data),
+      // pra conferir horário + quantidade de cada registro.
+      try {
+        setPacks(await meApi.packs(d.data));
+      } catch {
+        setPacks([]);
+      }
     } catch {
       setErro('Não foi possível carregar seu progresso.');
     } finally {
       setLoading(false);
     }
   }
+
+  // Packs agrupados por alocação, ordenados por horário.
+  const packsPorAlocacao = useMemo(() => {
+    const m = new Map<string, MeuPack[]>();
+    for (const p of packs) {
+      const arr = m.get(p.alocacaoId) ?? [];
+      arr.push(p);
+      m.set(p.alocacaoId, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.horario.localeCompare(b.horario));
+    return m;
+  }, [packs]);
 
   useEffect(() => {
     void load();
@@ -104,7 +130,7 @@ export default function PortalHomePage() {
                   <>
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">Hoje</p>
-                      <Badge className={cn(cor.badge)}>{data.totalPct}%</Badge>
+                      <Badge className={cn(cor.badge)}>{fmtPct(data.totalPct)}%</Badge>
                     </div>
                     <p className="text-4xl font-bold text-foreground mt-1">
                       {data.totalProduzido}
@@ -132,6 +158,8 @@ export default function PortalHomePage() {
                   <div className="flex flex-col gap-3">
                     {data.itens.map((it) => {
                       const c = pctColor(it.pct);
+                      const registros = packsPorAlocacao.get(it.alocacaoId) ?? [];
+                      const aberto = expandido === it.alocacaoId;
                       return (
                         <div key={it.alocacaoId} className="rounded-lg border p-3">
                           <div className="flex items-start justify-between gap-2">
@@ -143,13 +171,21 @@ export default function PortalHomePage() {
                                 Lote {it.loteCodigo ?? '—'} · início {it.horarioInicio} · {it.horas.toFixed(1)} h · meta {it.metaPorHora}/h
                               </p>
                             </div>
-                            <Badge className={cn('shrink-0', c.badge)}>{it.pct}%</Badge>
-                          </div>
-                          <div className="flex items-baseline gap-2 mt-2 text-sm">
-                            <span className="font-mono font-semibold text-foreground">{it.produzido}</span>
-                            <span className="text-muted-foreground">/</span>
-                            <span className="font-mono text-muted-foreground">{it.meta}</span>
-                            <span className="text-muted-foreground text-[11px]">peças</span>
+                            {/* Colunas Meta | Produção | % lado a lado */}
+                            <div className="flex items-stretch gap-3 shrink-0 text-center">
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Meta</p>
+                                <p className="font-mono text-sm text-muted-foreground">{it.meta}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Produção</p>
+                                <p className="font-mono text-sm font-semibold text-foreground">{it.produzido}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">%</p>
+                                <Badge className={cn(c.badge)}>{fmtPct(it.pct)}%</Badge>
+                              </div>
+                            </div>
                           </div>
                           <div className="bg-muted rounded-full h-2 mt-2 overflow-hidden">
                             <div
@@ -157,6 +193,35 @@ export default function PortalHomePage() {
                               style={{ width: `${Math.min(100, it.pct)}%` }}
                             />
                           </div>
+                          {registros.length > 0 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setExpandido(aberto ? null : it.alocacaoId)}
+                                className="mt-2 text-[11px] font-medium text-teal-700 hover:text-teal-900"
+                              >
+                                {aberto
+                                  ? 'Ocultar registros'
+                                  : `Ver registros (${registros.length})`}
+                              </button>
+                              {aberto && (
+                                <ul className="mt-2 flex flex-col gap-1 border-t pt-2">
+                                  {registros.map((p) => (
+                                    <li
+                                      key={p.id}
+                                      className="flex items-baseline justify-between gap-2 text-[12px]"
+                                    >
+                                      <span className="font-mono text-foreground">{horaCurta(p.horario)}</span>
+                                      <span className="text-foreground">
+                                        <span className="font-semibold">{p.quantidade}</span> peças
+                                        <span className="text-muted-foreground"> · tam {p.tamanho}</span>
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </>
+                          )}
                         </div>
                       );
                     })}

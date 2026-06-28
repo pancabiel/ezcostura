@@ -262,6 +262,7 @@ export default function FacilitadorPage() {
           operarioId={allocTarget.id}
           operarioNome={allocTarget.nome}
           data={data}
+          contexto="facilitador"
           onClose={() => setAllocTarget(null)}
         />
       )}

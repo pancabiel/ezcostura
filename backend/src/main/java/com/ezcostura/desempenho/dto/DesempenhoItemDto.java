@@ -18,5 +18,5 @@ public record DesempenhoItemDto(
     double horas,
     int meta,
     int produzido,
-    int pct
+    double pct
 ) {}

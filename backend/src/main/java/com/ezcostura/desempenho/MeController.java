@@ -5,6 +5,7 @@ import com.ezcostura.auth.Role;
 import com.ezcostura.config.ReactiveTenantHelper;
 import com.ezcostura.desempenho.dto.DesempenhoDiaDto;
 import com.ezcostura.desempenho.dto.DesempenhoPeriodoDto;
+import com.ezcostura.desempenho.dto.MeuPackDto;
 import com.ezcostura.desempenho.dto.PerfilDto;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -55,6 +57,15 @@ public class MeController {
     ) {
         UUID id = ensureOperarioSelf(principal);
         return ReactiveTenantHelper.runBlocking(() -> service.calcularDia(id, data));
+    }
+
+    @GetMapping("/packs")
+    public Mono<List<MeuPackDto>> packs(
+        @AuthenticationPrincipal AuthenticatedPrincipal principal,
+        @RequestParam("data") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data
+    ) {
+        UUID id = ensureOperarioSelf(principal);
+        return ReactiveTenantHelper.runBlocking(() -> service.meusPacksDoDia(id, data));
     }
 
     @GetMapping("/periodo")

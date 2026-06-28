@@ -35,6 +35,10 @@ sentry:
   exception-resolver-order: -2147483647
 
 ezcostura:
+  # Fuso horário da fábrica. Usado para carimbar o horário de início de alocações
+  # criadas por OPERADOR no servidor — o JVM em prod roda em UTC, então NÃO dá pra
+  # usar LocalTime.now() sem zona (carimbaria 3h adiantado para o Brasil).
+  timezone: ${EZCOSTURA_TIMEZONE:America/Sao_Paulo}
   tenants:
     # Initial tenants. In production, back this with a tenants table or admin API.
     initial:

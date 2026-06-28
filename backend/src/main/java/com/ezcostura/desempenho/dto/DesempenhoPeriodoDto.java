@@ -9,5 +9,5 @@ public record DesempenhoPeriodoDto(
     List<DesempenhoDiaDto> dias,
     int totalMeta,
     int totalProduzido,
-    int totalPct
+    double totalPct
 ) {}

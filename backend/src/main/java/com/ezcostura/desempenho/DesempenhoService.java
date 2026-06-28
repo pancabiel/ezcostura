@@ -7,6 +7,7 @@ import com.ezcostura.ausencia.AusenciaRepository;
 import com.ezcostura.desempenho.dto.DesempenhoDiaDto;
 import com.ezcostura.desempenho.dto.DesempenhoItemDto;
 import com.ezcostura.desempenho.dto.DesempenhoPeriodoDto;
+import com.ezcostura.desempenho.dto.MeuPackDto;
 import com.ezcostura.desempenho.dto.PerfilDto;
 import com.ezcostura.jornada.DiaEspecial;
 import com.ezcostura.jornada.DiaEspecialRepository;
@@ -80,6 +81,27 @@ public class DesempenhoService {
         );
     }
 
+    /**
+     * Packs individuais do próprio operário num dia, para a self-view do portal.
+     * Ordenados por horário; o operário é sempre resolvido pelo JWT no controller,
+     * nunca por parâmetro.
+     */
+    @Transactional(readOnly = true)
+    public List<MeuPackDto> meusPacksDoDia(UUID operarioId, LocalDate data) {
+        return packRepo.findByOperarioAndData(operarioId, data).stream()
+            .map(p -> new MeuPackDto(
+                p.getId(),
+                p.getHorario(),
+                p.getAlocacaoId(),
+                p.getOperacaoId(),
+                p.getOperacaoNome(),
+                p.getLoteCodigo(),
+                p.getTamanho(),
+                p.getQuantidade()
+            ))
+            .toList();
+    }
+
     @Transactional(readOnly = true)
     public DesempenhoDiaDto calcularDia(UUID operarioId, LocalDate data) {
         Operario op = operarioRepo.findById(operarioId)
@@ -142,7 +164,13 @@ public class DesempenhoService {
         }
         int totalMeta = dias.stream().mapToInt(DesempenhoDiaDto::totalMeta).sum();
         int totalProd = dias.stream().mapToInt(DesempenhoDiaDto::totalProduzido).sum();
-        int totalPct = totalMeta > 0 ? Math.round((float) totalProd / totalMeta * 100f) : 0;
+        // Média das % dos dias com meta > 0 (coerente com o cálculo do dia, que é média das
+        // % por operação) — não ponderado por produção, conforme pedido do cliente.
+        double totalPct = round2(dias.stream()
+            .filter(d -> d.totalMeta() > 0)
+            .mapToDouble(DesempenhoDiaDto::totalPct)
+            .average()
+            .orElse(0.0));
         return new DesempenhoPeriodoDto(inicio, fim, dias, totalMeta, totalProd, totalPct);
     }
 
@@ -179,7 +207,7 @@ public class DesempenhoService {
         List<DesempenhoItemDto> itens = new ArrayList<>();
         int totalMeta = 0;
         int totalProd = 0;
-        List<Integer> pcts = new ArrayList<>();
+        List<Double> pcts = new ArrayList<>();
 
         for (int i = 0; i < sorted.size(); i++) {
             Alocacao a = sorted.get(i);
@@ -202,7 +230,7 @@ public class DesempenhoService {
             int metaHora = operacao != null ? operacao.getMetaPorHora() : 0;
             int meta = (int) Math.round(metaHora * horas);
             int produzido = packsPorAlocacao.getOrDefault(a.getId(), 0);
-            int pct = meta > 0 ? Math.round((float) produzido / meta * 100f) : 0;
+            double pct = meta > 0 ? round2((double) produzido / meta * 100.0) : 0.0;
 
             itens.add(new DesempenhoItemDto(
                 a.getId(),
@@ -222,9 +250,9 @@ public class DesempenhoService {
             if (meta > 0) pcts.add(pct);
         }
 
-        int totalPct = pcts.isEmpty()
-            ? 0
-            : (int) Math.round(pcts.stream().mapToInt(Integer::intValue).average().orElse(0));
+        double totalPct = pcts.isEmpty()
+            ? 0.0
+            : round2(pcts.stream().mapToDouble(Double::doubleValue).average().orElse(0.0));
 
         String origem = ef != null ? ef.origem().name() : "DEFAULT";
         return new DesempenhoDiaDto(
@@ -257,6 +285,10 @@ public class DesempenhoService {
 
     private static double round1(double v) {
         return Math.round(v * 10.0) / 10.0;
+    }
+
+    private static double round2(double v) {
+        return Math.round(v * 100.0) / 100.0;
     }
 
     private static String mascararCpf(String cpf) {

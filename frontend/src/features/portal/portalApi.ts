@@ -44,6 +44,18 @@ export interface Perfil {
   jornadaNome: string | null;
 }
 
+/** Um pack individual do próprio operário (self-view: conferir horário + quantidade). */
+export interface MeuPack {
+  id: string;
+  horario: string; // ISO timestamp
+  alocacaoId: string;
+  operacaoId: string;
+  operacaoNome: string | null;
+  loteCodigo: string | null;
+  tamanho: string;
+  quantidade: number;
+}
+
 export const portalAuth = {
   async login(tenantId: string, cpf: string, pin: string) {
     const { data } = await axios.post('/api/auth/operario/login', { tenantId, cpf, pin });
@@ -72,6 +84,12 @@ export const meApi = {
       params: { inicio, fim },
     });
     return data;
+  },
+  async packs(data: string) {
+    const { data: packs } = await portalApi.get<MeuPack[]>('/me/packs', {
+      params: { data },
+    });
+    return packs;
   },
   async changePin(currentPin: string, newPin: string) {
     await portalApi.post('/auth/operario/change-pin', { currentPin, newPin });

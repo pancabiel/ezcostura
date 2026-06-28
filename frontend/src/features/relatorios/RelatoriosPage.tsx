@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { cn } from '@/lib/utils';
+import { cn, fmtPct } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -88,10 +88,12 @@ function HBars({
   data,
   color = '#0f766e',
   unit = '',
+  valueFormat,
 }: {
   data: { label: string; value: number; sub?: string }[];
   color?: string;
   unit?: string;
+  valueFormat?: (n: number) => string;
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   if (data.length === 0) return <p className="text-sm text-muted-foreground">Sem dados.</p>;
@@ -99,12 +101,13 @@ function HBars({
     <div className="flex flex-col gap-2">
       {data.map((d, i) => {
         const w = (d.value / max) * 100;
+        const safe = Number.isFinite(d.value) ? d.value : 0;
         return (
           <div key={i} className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="font-medium truncate text-foreground">{d.label}</span>
               <span className="font-mono text-foreground shrink-0">
-                {Number.isFinite(d.value) ? d.value : 0}{unit}
+                {valueFormat ? valueFormat(safe) : safe}{unit}
               </span>
             </div>
             <div className="bg-muted rounded-full h-3 overflow-hidden">
@@ -378,7 +381,7 @@ export default function RelatoriosPage() {
         const operacao = lote?.operacoes.find((o) => o.id === a.operacaoId);
         const meta = Math.round((operacao?.metaPorHora ?? 0) * horas);
         const produzido = packsByAloc.get(a.id) ?? 0;
-        const pct = meta > 0 ? Math.round((produzido / meta) * 100) : 0;
+        const pct = meta > 0 ? (produzido / meta) * 100 : 0;
         linhas.push({
           operarioId: opId,
           operarioNome: op.nome,
@@ -430,8 +433,8 @@ export default function RelatoriosPage() {
     return Array.from(m.values())
       .map((v) => ({
         label: v.nome,
-        value: Math.round(v.pcts.reduce((s, x) => s + x, 0) / v.pcts.length),
-        sub: `${v.produzido} / ${v.meta} pçs · ${v.pcts.length} dia(s)`,
+        value: v.pcts.reduce((s, x) => s + x, 0) / v.pcts.length,
+        sub: `${v.pcts.length} dia(s) · ${v.produzido} / ${v.meta} pçs`,
       }))
       .sort((a, b) => b.value - a.value);
   }, [desempenhoOperario]);
@@ -443,7 +446,7 @@ export default function RelatoriosPage() {
       if (d.meta === 0) continue;
       (m.get(d.data) ?? m.set(d.data, []).get(d.data)!).push(d.pct);
     }
-    const result: { label: string; value: number; date: string }[] = [];
+    const result: { label: string; value: number; raw: number; date: string }[] = [];
     const start = new Date(inicio + 'T00:00:00');
     const end = new Date(fim + 'T00:00:00');
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return result;
@@ -452,8 +455,8 @@ export default function RelatoriosPage() {
     while (cur <= end && safety < 366) {
       const iso = cur.toISOString().slice(0, 10);
       const arr = m.get(iso) ?? [];
-      const avg = arr.length > 0 ? Math.round(arr.reduce((s, x) => s + x, 0) / arr.length) : 0;
-      result.push({ label: fmtDayMonth(iso), value: avg, date: iso });
+      const avgRaw = arr.length > 0 ? arr.reduce((s, x) => s + x, 0) / arr.length : 0;
+      result.push({ label: fmtDayMonth(iso), value: Math.round(avgRaw), raw: avgRaw, date: iso });
       cur.setDate(cur.getDate() + 1);
       safety++;
     }
@@ -461,9 +464,9 @@ export default function RelatoriosPage() {
   }, [desempenhoOperario, inicio, fim]);
 
   const mediaPeriodoOperario = useMemo(() => {
-    const valores = porDiaOperario.map((x) => x.value).filter((x) => x > 0);
+    const valores = porDiaOperario.map((x) => x.raw).filter((x) => x > 0);
     if (valores.length === 0) return 0;
-    return Math.round(valores.reduce((s, x) => s + x, 0) / valores.length);
+    return valores.reduce((s, x) => s + x, 0) / valores.length;
   }, [porDiaOperario]);
 
   // Detalhe diário (mantido) para o dia em foco.
@@ -530,7 +533,7 @@ export default function RelatoriosPage() {
         const operacao = lote?.operacoes.find((o) => o.id === a.operacaoId);
         const meta = Math.round((operacao?.metaPorHora ?? 0) * horas);
         const produzido = packsByAloc.get(a.id) ?? 0;
-        const pct = meta > 0 ? Math.round((produzido / meta) * 100) : 0;
+        const pct = meta > 0 ? (produzido / meta) * 100 : 0;
         return {
           alocId: a.id,
           horario: a.horarioInicio.slice(0, 5),
@@ -543,7 +546,7 @@ export default function RelatoriosPage() {
       const totalProduzido = itens.reduce((s, x) => s + x.produzido, 0);
       const itensComMeta = itens.filter((x) => x.meta > 0);
       const totalPct = itensComMeta.length > 0
-        ? Math.round(itensComMeta.reduce((s, x) => s + x.pct, 0) / itensComMeta.length)
+        ? itensComMeta.reduce((s, x) => s + x.pct, 0) / itensComMeta.length
         : 0;
       rows.push({
         operarioId: opId,
@@ -643,7 +646,7 @@ export default function RelatoriosPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <Kpi
                 label="Média no período"
-                value={`${mediaPeriodoOperario}%`}
+                value={`${fmtPct(mediaPeriodoOperario)}%`}
                 sub="média das % diárias"
               />
               <Kpi
@@ -662,7 +665,7 @@ export default function RelatoriosPage() {
               <h4 className="font-semibold text-sm mb-2">Média por operação (%)</h4>
               {porOperacao.length === 0
                 ? <p className="text-sm text-muted-foreground">Sem dados.</p>
-                : <HBars data={porOperacao} color="#0f766e" unit="%" />}
+                : <HBars data={porOperacao} color="#0f766e" unit="%" valueFormat={fmtPct} />}
             </div>
 
             <div>
@@ -706,15 +709,21 @@ export default function RelatoriosPage() {
                   </h4>
                   <span className="text-sm whitespace-nowrap flex items-center gap-1">
                     <span className="font-mono">{row.totalProduzido}</span>
-                    <span className="text-muted-foreground"> / </span>
-                    <span className="font-mono">{row.totalMeta}</span>{' '}
-                    <Badge className={cn(pctBadge(row.totalPct))}>{row.totalPct}%</Badge>
+                    <span className="text-muted-foreground text-xs"> peças</span>
+                    <Badge className={cn('ml-1', pctBadge(row.totalPct))}>{fmtPct(row.totalPct)}%</Badge>
                   </span>
                 </div>
-                <ul className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2">
+                  {/* Colunas Meta | Produção | % lado a lado, sem total somado de metas. */}
+                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <span />
+                    <span className="text-right">Meta</span>
+                    <span className="text-right">Produção</span>
+                    <span className="text-right">%</span>
+                  </div>
                   {row.itens.map((it) => (
-                    <li key={it.alocId}>
-                      <div className="flex justify-between text-sm mb-1 gap-2">
+                    <div key={it.alocId} className="flex flex-col gap-1">
+                      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 text-sm">
                         <span className="text-foreground min-w-0 truncate">
                           <span className="font-mono">{it.horario}</span>
                           <span className="text-muted-foreground"> · </span>
@@ -722,9 +731,10 @@ export default function RelatoriosPage() {
                           <span className="text-muted-foreground"> · </span>
                           <span className="text-muted-foreground">{it.horas.toFixed(1)}h</span>
                         </span>
-                        <span className="font-mono whitespace-nowrap flex items-center gap-1">
-                          {it.produzido} / {it.meta}{' '}
-                          <Badge className={cn(pctBadge(it.pct))}>{it.pct}%</Badge>
+                        <span className="font-mono text-right text-muted-foreground">{it.meta}</span>
+                        <span className="font-mono text-right font-semibold text-foreground">{it.produzido}</span>
+                        <span className="text-right">
+                          <Badge className={cn(pctBadge(it.pct))}>{fmtPct(it.pct)}%</Badge>
                         </span>
                       </div>
                       <div className="bg-muted rounded-full h-2 overflow-hidden">
@@ -733,9 +743,9 @@ export default function RelatoriosPage() {
                           style={{ width: `${Math.min(100, it.pct)}%` }}
                         />
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             ))}
           </div>

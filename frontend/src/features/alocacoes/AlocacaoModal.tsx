@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDb } from '../../db/dexie';
 import { alocacoesRepo } from './alocacoesRepo';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
+import { useAuthStore } from '../../stores/authStore';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
 import {
@@ -33,16 +34,34 @@ interface Props {
   data: string;
   alocacao?: AlocacaoLocal;
   defaultHorario?: string;
+  /**
+   * 'gerenciador' = planejamento do dia (1ª alocação nasce no início da jornada);
+   * 'facilitador' = troca em tempo real no chão de fábrica (nasce na hora atual).
+   */
+  contexto?: 'gerenciador' | 'facilitador';
   onClose: () => void;
 }
 
 export default function AlocacaoModal({
-  operarioId, operarioNome, data, alocacao, defaultHorario, onClose,
+  operarioId, operarioNome, data, alocacao, defaultHorario,
+  contexto = 'gerenciador', onClose,
 }: Props) {
-  const lotes = useLiveQuery(() => getDb().lotes.toArray(), []) ?? [];
-  const jornadas = useLiveQuery(() => getDb().jornadas.toArray(), []) ?? [];
-  const diasEspeciais = useLiveQuery(() => getDb().diasEspeciais.toArray(), []) ?? [];
+  // Master (ADMIN) escolhe o horário livremente; o funcionário comum (OPERADOR) recebe
+  // o horário travado — o servidor também carimba/preserva (defesa real, ver AlocacaoService).
+  const isMaster = useAuthStore((s) => s.session?.role) === 'ADMIN';
+
+  const lotesRaw = useLiveQuery(() => getDb().lotes.toArray(), []);
+  const jornadasRaw = useLiveQuery(() => getDb().jornadas.toArray(), []);
+  const diasEspeciaisRaw = useLiveQuery(() => getDb().diasEspeciais.toArray(), []);
   const operario = useLiveQuery(() => getDb().operarios.get(operarioId), [operarioId]);
+  const existentesRaw = useLiveQuery(
+    () => getDb().alocacoes.where('[operarioId+data]').equals([operarioId, data]).toArray(),
+    [operarioId, data],
+  );
+
+  const lotes = lotesRaw ?? [];
+  const jornadas = jornadasRaw ?? [];
+  const diasEspeciais = diasEspeciaisRaw ?? [];
 
   const efetiva = useMemo(() => {
     if (!operario) return null;
@@ -69,6 +88,33 @@ export default function AlocacaoModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const confirm = useConfirm();
+
+  // Default do horário pela jornada (item 2). Roda uma única vez, depois que as queries
+  // do Dexie carregaram, e só para alocação NOVA (edição mantém o horário salvo).
+  const horarioInicializado = useRef(false);
+  useEffect(() => {
+    if (horarioInicializado.current) return;
+    if (alocacao || defaultHorario) { horarioInicializado.current = true; return; }
+    // Espera tudo carregar pra resolver a jornada e saber se já há alocação no dia.
+    if (operario === undefined || existentesRaw === undefined
+      || jornadasRaw === undefined || diasEspeciaisRaw === undefined) return;
+
+    const temAnterior = existentesRaw.some((a) => !a.pendingDelete);
+    let def: string;
+    if (contexto === 'facilitador') {
+      // Troca em tempo real: hora atual (travada para o funcionário comum).
+      def = defaultNowHHMM();
+    } else if (!temAnterior) {
+      // 1ª alocação do dia no planejamento: início da jornada do operário.
+      def = horarioManha ?? defaultNowHHMM();
+    } else {
+      // 2ª+ alocação pré-planejada: fim do almoço (atalho "Tarde").
+      def = horarioTarde ?? defaultNowHHMM();
+    }
+    setHorarioInicio(def);
+    horarioInicializado.current = true;
+  }, [operario, existentesRaw, jornadasRaw, diasEspeciaisRaw, alocacao, defaultHorario,
+      contexto, horarioManha, horarioTarde]);
 
   const lote: LoteLocal | undefined = useMemo(
     () => lotes.find((l) => l.id === loteId),
@@ -138,33 +184,42 @@ export default function AlocacaoModal({
               <FieldLabel htmlFor="aloc-horario">Horário de início</FieldLabel>
               <Input
                 id="aloc-horario"
-                autoFocus
+                autoFocus={isMaster}
                 type="time"
                 value={horarioInicio}
                 onChange={(e) => setHorarioInicio(e.target.value)}
+                readOnly={!isMaster}
+                aria-readonly={!isMaster}
+                className={isMaster ? undefined : 'cursor-not-allowed opacity-70'}
                 required
               />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => horarioManha && setHorarioInicio(horarioManha)}
-                  disabled={!horarioManha}
-                >
-                  Manhã{horarioManha ? ` (${horarioManha})` : ''}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => horarioTarde && setHorarioInicio(horarioTarde)}
-                  disabled={!horarioTarde}
-                  title={horarioTarde ? undefined : 'Configure uma pausa do tipo Almoço na Jornada'}
-                >
-                  Tarde{horarioTarde ? ` (${horarioTarde})` : ''}
-                </Button>
-              </div>
+              {isMaster ? (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => horarioManha && setHorarioInicio(horarioManha)}
+                    disabled={!horarioManha}
+                  >
+                    Manhã{horarioManha ? ` (${horarioManha})` : ''}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => horarioTarde && setHorarioInicio(horarioTarde)}
+                    disabled={!horarioTarde}
+                    title={horarioTarde ? undefined : 'Configure uma pausa do tipo Almoço na Jornada'}
+                  >
+                    Tarde{horarioTarde ? ` (${horarioTarde})` : ''}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Horário registrado automaticamente. Só o supervisor pode alterar.
+                </p>
+              )}
             </Field>
 
             <Field>
