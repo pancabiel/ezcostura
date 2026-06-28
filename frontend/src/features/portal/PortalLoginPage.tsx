@@ -2,6 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortalAuthStore } from '../../stores/portalAuthStore';
 import { portalAuth } from './portalApi';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 
 /** Formata progressivamente como 000.000.000-00 a partir dos dígitos digitados. */
 function formatCpf(value: string): string {
@@ -52,79 +63,81 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-muted/40 flex flex-col">
       <div className="flex-1 flex items-center justify-center px-4 py-8">
-        <form
-          onSubmit={handleSubmit}
-          className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4"
-        >
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-900">Meu Progresso</h1>
-            <p className="text-sm text-slate-500 mt-1">Entre com seu CPF e PIN</p>
-          </div>
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Meu Progresso</CardTitle>
+            <CardDescription>Entre com seu CPF e PIN</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="portal-tenant">Facção</FieldLabel>
+                  <Input
+                    id="portal-tenant"
+                    type="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    value={tenantId}
+                    onChange={(e) => setTenantId(e.target.value)}
+                    placeholder="nome da facção"
+                    required
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="portal-cpf">CPF</FieldLabel>
+                  <Input
+                    id="portal-cpf"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="username"
+                    value={cpf}
+                    onChange={(e) => setCpf(formatCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    required
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="portal-pin">PIN</FieldLabel>
+                  <Input
+                    id="portal-pin"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="****"
+                    maxLength={6}
+                    required
+                    className="tracking-widest"
+                  />
+                </Field>
+              </FieldGroup>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Facção</span>
-            <input
-              type="text"
-              autoCapitalize="none"
-              autoCorrect="off"
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-              placeholder="nome da facção"
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            />
-          </label>
+              {erro && (
+                <Alert variant="destructive">
+                  <AlertDescription>{erro}</AlertDescription>
+                </Alert>
+              )}
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">CPF</span>
-            <input
-              type="tel"
-              inputMode="numeric"
-              autoComplete="username"
-              value={cpf}
-              onChange={(e) => setCpf(formatCpf(e.target.value))}
-              placeholder="000.000.000-00"
-              maxLength={14}
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            />
-          </label>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={loading}
+                className="w-full bg-teal-600 text-white hover:bg-teal-700"
+              >
+                {loading ? 'Entrando…' : 'Entrar'}
+              </Button>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">PIN</span>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="****"
-              maxLength={6}
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            />
-          </label>
-
-          {erro && (
-            <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
-              {erro}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-semibold py-3 rounded-md transition"
-          >
-            {loading ? 'Entrando…' : 'Entrar'}
-          </button>
-
-          <p className="text-[11px] text-slate-500 text-center pt-2">
-            Primeiro acesso? Seu PIN são os 4 primeiros números do seu CPF.
-          </p>
-        </form>
+              <FieldDescription className="text-center">
+                Primeiro acesso? Seu PIN são os 4 primeiros números do seu CPF.
+              </FieldDescription>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

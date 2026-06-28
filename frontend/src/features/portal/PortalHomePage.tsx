@@ -2,11 +2,17 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortalAuthStore } from '../../stores/portalAuthStore';
 import { meApi, type DesempenhoDia } from './portalApi';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 function pctColor(pct: number) {
-  if (pct >= 100) return { bar: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-800' };
-  if (pct >= 75) return { bar: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800' };
-  return { bar: 'bg-rose-500', badge: 'bg-rose-100 text-rose-800' };
+  if (pct >= 100) return { bar: 'bg-emerald-500', badge: 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300' };
+  if (pct >= 75) return { bar: 'bg-amber-500', badge: 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300' };
+  return { bar: 'bg-rose-500', badge: 'border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300' };
 }
 
 export default function PortalHomePage() {
@@ -42,7 +48,7 @@ export default function PortalHomePage() {
   const cor = pctColor(data?.totalPct ?? 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-8">
+    <div className="min-h-screen bg-muted/40 pb-8">
       {/* topo */}
       <header className="bg-teal-700 text-white px-4 pt-6 pb-8 shadow-sm">
         <div className="max-w-md mx-auto flex items-start justify-between gap-3">
@@ -53,124 +59,139 @@ export default function PortalHomePage() {
               {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
-          <button
+          <Button
+            size="sm"
             onClick={sair}
-            className="text-xs bg-teal-800 hover:bg-teal-900 text-white px-3 py-1.5 rounded-md"
+            className="bg-teal-800 text-white hover:bg-teal-900"
           >
             Sair
-          </button>
+          </Button>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 -mt-5 space-y-4">
+      <main className="max-w-md mx-auto px-4 -mt-5 flex flex-col gap-4">
         {loading && (
-          <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-slate-500">
-            Carregando…
-          </div>
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-40" />
+              <Skeleton className="h-3 w-full" />
+            </CardContent>
+          </Card>
         )}
 
         {erro && (
-          <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
-            {erro}
-            <button onClick={load} className="ml-2 underline">
-              tentar de novo
-            </button>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>
+              {erro}
+              <Button variant="link" size="sm" className="ml-1 h-auto p-0" onClick={load}>
+                tentar de novo
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
         {data && !loading && (
           <>
             {/* KPI principal */}
-            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
-              {data.ausente ? (
-                <div className="text-center py-4">
-                  <p className="text-sm font-medium text-slate-700">Você está marcado como ausente hoje.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-xs uppercase tracking-wider text-slate-500">Hoje</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${cor.badge}`}>
-                      {data.totalPct}%
-                    </span>
+            <Card>
+              <CardContent>
+                {data.ausente ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm font-medium text-foreground">Você está marcado como ausente hoje.</p>
                   </div>
-                  <p className="text-4xl font-bold text-slate-900 mt-1">
-                    {data.totalProduzido}
-                    <span className="text-lg font-normal text-slate-500"> / {data.totalMeta} peças</span>
-                  </p>
-                  <div className="bg-slate-100 rounded-full h-3 mt-3 overflow-hidden">
-                    <div
-                      className={`h-3 ${cor.bar} transition-all`}
-                      style={{ width: `${Math.min(100, data.totalPct)}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-2">
-                    Jornada: {data.horaInicio} às {data.horaFim}
-                  </p>
-                </>
-              )}
-            </section>
+                ) : (
+                  <>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Hoje</p>
+                      <Badge className={cn(cor.badge)}>{data.totalPct}%</Badge>
+                    </div>
+                    <p className="text-4xl font-bold text-foreground mt-1">
+                      {data.totalProduzido}
+                      <span className="text-lg font-normal text-muted-foreground"> / {data.totalMeta} peças</span>
+                    </p>
+                    <div className="bg-muted rounded-full h-3 mt-3 overflow-hidden">
+                      <div
+                        className={cn('h-3 transition-all', cor.bar)}
+                        style={{ width: `${Math.min(100, data.totalPct)}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      Jornada: {data.horaInicio} às {data.horaFim}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Detalhe por alocação */}
             {!data.ausente && data.itens.length > 0 && (
-              <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
-                <h2 className="font-semibold text-slate-900 text-sm mb-3">Por operação</h2>
-                <div className="space-y-3">
-                  {data.itens.map((it) => {
-                    const c = pctColor(it.pct);
-                    return (
-                      <div key={it.alocacaoId} className="border border-slate-100 rounded-lg p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-slate-900 text-sm truncate">
-                              {it.operacaoNome ?? 'Operação'}
-                            </p>
-                            <p className="text-[11px] text-slate-500 truncate">
-                              Lote {it.loteCodigo ?? '—'} · início {it.horarioInicio} · {it.horas.toFixed(1)} h · meta {it.metaPorHora}/h
-                            </p>
+              <Card>
+                <CardContent>
+                  <h2 className="font-semibold text-foreground text-sm mb-3">Por operação</h2>
+                  <div className="flex flex-col gap-3">
+                    {data.itens.map((it) => {
+                      const c = pctColor(it.pct);
+                      return (
+                        <div key={it.alocacaoId} className="rounded-lg border p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground text-sm truncate">
+                                {it.operacaoNome ?? 'Operação'}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                Lote {it.loteCodigo ?? '—'} · início {it.horarioInicio} · {it.horas.toFixed(1)} h · meta {it.metaPorHora}/h
+                              </p>
+                            </div>
+                            <Badge className={cn('shrink-0', c.badge)}>{it.pct}%</Badge>
                           </div>
-                          <span className={`text-[11px] shrink-0 px-2 py-0.5 rounded-full ${c.badge}`}>
-                            {it.pct}%
-                          </span>
+                          <div className="flex items-baseline gap-2 mt-2 text-sm">
+                            <span className="font-mono font-semibold text-foreground">{it.produzido}</span>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="font-mono text-muted-foreground">{it.meta}</span>
+                            <span className="text-muted-foreground text-[11px]">peças</span>
+                          </div>
+                          <div className="bg-muted rounded-full h-2 mt-2 overflow-hidden">
+                            <div
+                              className={cn('h-2 transition-all', c.bar)}
+                              style={{ width: `${Math.min(100, it.pct)}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-baseline gap-2 mt-2 text-sm">
-                          <span className="font-mono font-semibold text-slate-900">{it.produzido}</span>
-                          <span className="text-slate-400">/</span>
-                          <span className="font-mono text-slate-500">{it.meta}</span>
-                          <span className="text-slate-400 text-[11px]">peças</span>
-                        </div>
-                        <div className="bg-slate-100 rounded-full h-2 mt-2 overflow-hidden">
-                          <div
-                            className={`h-2 ${c.bar} transition-all`}
-                            style={{ width: `${Math.min(100, it.pct)}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {!data.ausente && data.itens.length === 0 && (
-              <section className="bg-white border border-slate-200 rounded-xl p-6 text-center text-sm text-slate-500">
-                Você ainda não tem operações alocadas para hoje.
-              </section>
+              <Card>
+                <CardContent className="text-center text-sm text-muted-foreground py-6">
+                  Você ainda não tem operações alocadas para hoje.
+                </CardContent>
+              </Card>
             )}
 
-            <button
-              onClick={load}
-              className="w-full bg-white border border-slate-200 rounded-md py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            <Button
+              size="lg"
+              onClick={() => navigate('/meu/semana')}
+              className="w-full bg-teal-600 text-white hover:bg-teal-700"
             >
-              Atualizar
-            </button>
+              Ver minha semana
+            </Button>
 
-            <button
+            <Button variant="outline" size="lg" onClick={load} className="w-full">
+              Atualizar
+            </Button>
+
+            <Button
+              variant="link"
               onClick={() => navigate('/meu/pin')}
-              className="w-full text-sm font-medium text-teal-700 hover:text-teal-900 py-2"
+              className="w-full text-teal-700 hover:text-teal-900"
             >
               Trocar meu PIN
-            </button>
+            </Button>
           </>
         )}
       </main>

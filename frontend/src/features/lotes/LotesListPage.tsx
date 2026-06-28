@@ -5,6 +5,10 @@ import { getDb } from '../../db/dexie';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { lotesRepo } from './lotesRepo';
 import type { LoteLocal, SyncStatus } from '../../types/lote';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 
 export default function LotesListPage() {
   const [query, setQuery] = useState('');
@@ -29,29 +33,27 @@ export default function LotesListPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Lotes</h2>
-        <Link
-          to="/lotes/novo"
-          className="bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-800"
-        >
-          + Novo lote
-        </Link>
+        <Button asChild>
+          <Link to="/lotes/novo">+ Novo lote</Link>
+        </Button>
       </div>
 
-      <input
+      <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Buscar por código ou nome…"
-        className="w-full mb-4 px-4 py-3 rounded-md border border-slate-300 bg-white"
+        className="w-full mb-4"
       />
 
       {filtered === undefined ? (
-        <p className="text-slate-500">Carregando…</p>
+        <p className="text-muted-foreground">Carregando…</p>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-md border border-slate-200 p-8 text-center text-slate-500">
-          Nenhum lote cadastrado ainda.
-        </div>
+        <Empty className="border">
+          <EmptyTitle>Nenhum lote cadastrado ainda.</EmptyTitle>
+          <EmptyDescription>Crie o primeiro lote para começar.</EmptyDescription>
+        </Empty>
       ) : (
-        <ul className="bg-white rounded-md border border-slate-200 divide-y divide-slate-100">
+        <ul className="rounded-md border bg-card divide-y">
           {filtered.map((l) => (
             <LoteRow key={l.id} lote={l} />
           ))}
@@ -78,33 +80,23 @@ function LoteRow({ lote }: { lote: LoteLocal }) {
     <li className="flex items-center justify-between p-4">
       <Link to={`/lotes/${lote.id}`} className="flex-1 min-w-0">
         <div className="flex items-baseline gap-3">
-          <span className="font-mono text-sm text-slate-500">{lote.codigo}</span>
+          <span className="font-mono text-sm text-muted-foreground">{lote.codigo}</span>
           <span className="font-medium truncate">{lote.nome}</span>
           <SyncBadge status={lote.syncStatus} />
         </div>
         {lote.descricao && (
-          <p className="text-sm text-slate-500 truncate mt-1">{lote.descricao}</p>
+          <p className="text-sm text-muted-foreground truncate mt-1">{lote.descricao}</p>
         )}
       </Link>
-      <button
-        onClick={handleDelete}
-        className="ml-4 text-sm text-rose-600 hover:underline"
-      >
+      <Button variant="ghost" size="sm" className="ml-4 text-destructive" onClick={handleDelete}>
         Remover
-      </button>
+      </Button>
     </li>
   );
 }
 
 function SyncBadge({ status }: { status: SyncStatus }) {
   if (status === 'synced') return null;
-  const cls =
-    status === 'pending'
-      ? 'bg-slate-100 text-slate-600'
-      : 'bg-rose-100 text-rose-700';
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${cls}`}>
-      {status === 'pending' ? 'pendente' : 'erro'}
-    </span>
-  );
+  if (status === 'pending') return <Badge variant="secondary">pendente</Badge>;
+  return <Badge variant="destructive">erro</Badge>;
 }

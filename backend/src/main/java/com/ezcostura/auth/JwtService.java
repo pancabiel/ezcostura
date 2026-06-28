@@ -20,23 +20,33 @@ public class JwtService {
     private final SecretKey key;
     private final long accessTtlSeconds;
     private final long refreshTtlSeconds;
+    // O portal do operário usa CPF (chutável) — TTLs mais curtos limitam a janela
+    // de um token roubado/abusado sem afetar a sessão do admin.
+    private final long operarioAccessTtlSeconds;
+    private final long operarioRefreshTtlSeconds;
 
     public JwtService(
         @Value("${ezcostura.jwt.secret:}") String secret,
         @Value("${ezcostura.jwt.access-ttl-seconds:3600}") long accessTtl,
-        @Value("${ezcostura.jwt.refresh-ttl-seconds:1209600}") long refreshTtl
+        @Value("${ezcostura.jwt.refresh-ttl-seconds:1209600}") long refreshTtl,
+        @Value("${ezcostura.jwt.operario.access-ttl-seconds:1800}") long operarioAccessTtl,
+        @Value("${ezcostura.jwt.operario.refresh-ttl-seconds:604800}") long operarioRefreshTtl
     ) {
         this.key = Keys.hmacShaKeyFor(requireStrongSecret(secret));
         this.accessTtlSeconds = accessTtl;
         this.refreshTtlSeconds = refreshTtl;
+        this.operarioAccessTtlSeconds = operarioAccessTtl;
+        this.operarioRefreshTtlSeconds = operarioRefreshTtl;
     }
 
     public String issueAccess(UUID userId, String tenantId, Role role) {
-        return issue(userId, tenantId, role, accessTtlSeconds, "access");
+        long ttl = role == Role.OPERARIO_SELF ? operarioAccessTtlSeconds : accessTtlSeconds;
+        return issue(userId, tenantId, role, ttl, "access");
     }
 
     public String issueRefresh(UUID userId, String tenantId, Role role) {
-        return issue(userId, tenantId, role, refreshTtlSeconds, "refresh");
+        long ttl = role == Role.OPERARIO_SELF ? operarioRefreshTtlSeconds : refreshTtlSeconds;
+        return issue(userId, tenantId, role, ttl, "refresh");
     }
 
     public Claims parse(String token) {

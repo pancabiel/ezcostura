@@ -7,6 +7,27 @@ import { getSession } from '../../stores/authStore';
 import { getDb } from '../../db/dexie';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
   operarioId: string;
@@ -196,122 +217,136 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <h3 className="text-xl font-semibold">Adicionar pack</h3>
-            <p className="text-sm text-slate-500">{operarioNome}</p>
-          </div>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[95vh] overflow-y-auto">
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Adicionar pack</DialogTitle>
+            <DialogDescription>{operarioNome}</DialogDescription>
+          </DialogHeader>
 
           {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          <label className="block">
-            <span className="block text-sm font-medium text-slate-700 mb-1">Lote</span>
-            <select
-              value={loteId}
-              onChange={(e) => { setLoteId(e.target.value); setOperacaoId(''); setTamanhoTouched(false); }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
-              required
-            >
-              <option value="">Selecione…</option>
-              {lotes.map((l) => (
-                <option key={l.id} value={l.id}>{l.codigo} — {l.nome}</option>
-              ))}
-            </select>
-          </label>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="pack-lote">Lote</FieldLabel>
+              <Select
+                value={loteId}
+                onValueChange={(v) => { setLoteId(v); setOperacaoId(''); setTamanhoTouched(false); }}
+              >
+                <SelectTrigger id="pack-lote" aria-label="Lote" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {lotes.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.codigo} — {l.nome}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <label className="block">
-            <span className="block text-sm font-medium text-slate-700 mb-1">Operação</span>
-            <select
-              value={operacaoId}
-              onChange={(e) => { setOperacaoId(e.target.value); setTamanhoTouched(false); }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
-              required
-              disabled={!selectedLote}
-            >
-              <option value="">Selecione…</option>
-              {operacoesComAloc.map(({ op, aloc }) => {
-                const isVigente = vigente?.id === aloc?.id;
-                let label = op.nome;
-                if (aloc) {
-                  const inicio = aloc.horarioInicio.slice(0, 5);
-                  label = `${op.nome} — ${inicio}${isVigente ? ' (vigente)' : ''}`;
-                }
-                return <option key={op.id} value={op.id}>{label}</option>;
-              })}
-            </select>
-            {selectedLote && operacoesComAloc.length === 0 && (
-              <p className="text-xs text-slate-500 mt-1">Lote sem operações cadastradas.</p>
-            )}
-          </label>
+            <Field>
+              <FieldLabel htmlFor="pack-operacao">Operação</FieldLabel>
+              <Select
+                value={operacaoId}
+                onValueChange={(v) => { setOperacaoId(v); setTamanhoTouched(false); }}
+                disabled={!selectedLote}
+              >
+                <SelectTrigger id="pack-operacao" aria-label="Operação" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {operacoesComAloc.map(({ op, aloc }) => {
+                      const isVigente = vigente?.id === aloc?.id;
+                      let label = op.nome;
+                      if (aloc) {
+                        const inicio = aloc.horarioInicio.slice(0, 5);
+                        label = `${op.nome} — ${inicio}${isVigente ? ' (vigente)' : ''}`;
+                      }
+                      return <SelectItem key={op.id} value={op.id}>{label}</SelectItem>;
+                    })}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              {selectedLote && operacoesComAloc.length === 0 && (
+                <FieldDescription>Lote sem operações cadastradas.</FieldDescription>
+              )}
+            </Field>
 
-          <label className="block">
-            <span className="block text-sm font-medium text-slate-700 mb-1">Tamanho</span>
-            <select
-              value={tamanho}
-              onChange={(e) => { setTamanho(e.target.value); setTamanhoTouched(true); }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white"
-              disabled={!selectedLote}
-              required
-            >
-              <option value="">Selecione…</option>
-              {selectedLote?.tamanhos.map((t) => (
-                <option key={t.id} value={t.tamanho}>
-                  {t.tamanho} ({t.quantidade} pçs no lote)
-                </option>
-              ))}
-            </select>
-            {limite != null && (
-              <p className={`text-xs mt-1 ${restante === 0 ? 'text-rose-700' : 'text-slate-500'}`}>
-                Já produzido: <span className="font-mono">{jaProduzido}</span> de <span className="font-mono">{limite}</span>
-                {restante != null && <> · resta(m) <span className="font-mono">{restante}</span></>}
-              </p>
-            )}
-          </label>
+            <Field>
+              <FieldLabel htmlFor="pack-tamanho">Tamanho</FieldLabel>
+              <Select
+                value={tamanho}
+                onValueChange={(v) => { setTamanho(v); setTamanhoTouched(true); }}
+                disabled={!selectedLote}
+              >
+                <SelectTrigger id="pack-tamanho" aria-label="Tamanho" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {selectedLote?.tamanhos.map((t) => (
+                      <SelectItem key={t.id} value={t.tamanho}>
+                        {t.tamanho} ({t.quantidade} pçs no lote)
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              {limite != null && (
+                <FieldDescription className={cn(restante === 0 && 'text-destructive')}>
+                  Já produzido: <span className="font-mono">{jaProduzido}</span> de <span className="font-mono">{limite}</span>
+                  {restante != null && <> · resta(m) <span className="font-mono">{restante}</span></>}
+                </FieldDescription>
+              )}
+            </Field>
 
-          <label className="block">
-            <span className="block text-sm font-medium text-slate-700 mb-1">Quantidade de peças</span>
-            <input
-              type="number"
-              autoFocus
-              min={1}
-              inputMode="numeric"
-              value={quantidade || ''}
-              onChange={(e) => {
-                setQuantidade(Number(e.target.value) || 0);
-                setQuantidadeTouched(true);
-              }}
-              onFocus={(e) => e.currentTarget.select()}
-              className={`w-full text-3xl text-center px-3 py-4 border rounded-md bg-white font-mono ${
-                ultrapassaria ? 'border-rose-400 bg-rose-50' : 'border-slate-300'
-              }`}
-            />
-            {ultrapassaria && (
-              <p className="text-xs mt-1 text-rose-700">
-                Ultrapassa o limite. Máximo permitido agora: {Math.max(0, (limite ?? 0) - jaProduzido)}
-              </p>
-            )}
-          </label>
+            <Field>
+              <FieldLabel htmlFor="pack-qtd">Quantidade de peças</FieldLabel>
+              <Input
+                id="pack-qtd"
+                type="number"
+                autoFocus
+                min={1}
+                inputMode="numeric"
+                value={quantidade || ''}
+                onChange={(e) => {
+                  setQuantidade(Number(e.target.value) || 0);
+                  setQuantidadeTouched(true);
+                }}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-invalid={ultrapassaria}
+                className={cn('h-auto py-4 text-center font-mono text-3xl', ultrapassaria && 'bg-destructive/10')}
+              />
+              {ultrapassaria && (
+                <FieldDescription className="text-destructive">
+                  Ultrapassa o limite. Máximo permitido agora: {Math.max(0, (limite ?? 0) - jaProduzido)}
+                </FieldDescription>
+              )}
+            </Field>
+          </FieldGroup>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-3 rounded-md border border-slate-300 bg-white">
+          <DialogFooter>
+            <Button type="button" variant="outline" className="h-12 text-base" onClick={onClose}>
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={saving}
-              className="px-6 py-3 rounded-md bg-emerald-600 text-white text-lg font-medium disabled:opacity-50 hover:bg-emerald-700"
+              className="h-12 px-6 text-lg bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {saving ? 'Registrando…' : 'Registrar'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

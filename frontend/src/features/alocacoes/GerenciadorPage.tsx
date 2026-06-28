@@ -6,6 +6,9 @@ import AlocacaoModal from './AlocacaoModal';
 import { pullAlocacoesForDate } from '../../services/syncService';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { OperarioLocal } from '../../types/operario';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyTitle } from '@/components/ui/empty';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -50,53 +53,54 @@ export default function GerenciadorPage() {
   }, [alocacoes]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <div className="max-w-6xl mx-auto flex flex-col gap-4">
       <h2 className="text-2xl font-semibold">Gerenciador de Operações</h2>
       <DateNav value={data} onChange={setData} showTodayBanner />
 
       {operarios.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-md p-8 text-center text-slate-500">
-          Nenhum funcionário ativo. Cadastre funcionários antes de planejar.
-        </div>
+        <Empty className="border">
+          <EmptyTitle>Nenhum funcionário ativo. Cadastre funcionários antes de planejar.</EmptyTitle>
+        </Empty>
       ) : (
-        <ul className="space-y-3">
+        <ul className="flex flex-col gap-3">
           {operarios.map((op) => {
             const lista = allocByOperario.get(op.id) ?? [];
             return (
-              <li key={op.id} className="bg-white border border-slate-200 rounded-md p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold">{op.nome}</h3>
-                  <button
-                    onClick={() => setEditing({ operario: op })}
-                    className="text-sm bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-800"
-                  >
-                    + Adicionar alocação
-                  </button>
-                </div>
-                {lista.length === 0 ? (
-                  <p className="text-sm text-slate-500">Sem alocações neste dia.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {lista.map((a) => {
-                      const lote = loteById.get(a.loteId);
-                      const operacao = lote?.operacoes.find((o) => o.id === a.operacaoId);
-                      return (
-                        <li
-                          key={a.id}
-                          onClick={() => setEditing({ operario: op, alocacao: a })}
-                          className="flex items-center gap-3 border border-slate-100 rounded-md px-3 py-2 hover:bg-slate-50 cursor-pointer"
-                        >
-                          <span className="font-mono text-sm text-slate-700">{a.horarioInicio.slice(0, 5)}</span>
-                          <span className="text-sm">
-                            {lote ? `${lote.codigo} · ${lote.nome}` : 'Lote ?'}
-                            <span className="text-slate-400"> · </span>
-                            op {operacao?.nome ?? '?'}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+              <li key={op.id}>
+                <Card>
+                  <CardContent className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">{op.nome}</h3>
+                      <Button size="sm" onClick={() => setEditing({ operario: op })}>
+                        + Adicionar alocação
+                      </Button>
+                    </div>
+                    {lista.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Sem alocações neste dia.</p>
+                    ) : (
+                      <ul className="flex flex-col gap-2">
+                        {lista.map((a) => {
+                          const lote = loteById.get(a.loteId);
+                          const operacao = lote?.operacoes.find((o) => o.id === a.operacaoId);
+                          return (
+                            <li
+                              key={a.id}
+                              onClick={() => setEditing({ operario: op, alocacao: a })}
+                              className="flex items-center gap-3 rounded-md border px-3 py-2 hover:bg-muted/50 cursor-pointer"
+                            >
+                              <span className="font-mono text-sm text-foreground">{a.horarioInicio.slice(0, 5)}</span>
+                              <span className="text-sm">
+                                {lote ? `${lote.codigo} · ${lote.nome}` : 'Lote ?'}
+                                <span className="text-muted-foreground"> · </span>
+                                op {operacao?.nome ?? '?'}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
               </li>
             );
           })}

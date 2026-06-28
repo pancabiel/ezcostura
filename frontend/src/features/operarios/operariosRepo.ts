@@ -42,6 +42,15 @@ export const operariosRepo = {
     });
   },
 
+  /**
+   * Atualiza só o flag de acesso ao portal localmente, sem marcar a linha como
+   * 'pending' (o PIN é gerido por endpoints dedicados, não pela sync de operário).
+   * Mantém o indicador da lista em dia imediatamente após resetar/remover acesso.
+   */
+  async setTemPin(id: string, temPin: boolean): Promise<void> {
+    await getDb().operarios.update(id, { temPin });
+  },
+
   async markDeleted(id: string): Promise<void> {
     const existing = await getDb().operarios.get(id);
     if (!existing) return;

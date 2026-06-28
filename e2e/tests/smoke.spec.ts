@@ -60,6 +60,6 @@ test.describe('ezcostura — admin walkthrough on Firefox', () => {
   test('protected routes redirect when logged out', async ({ page }) => {
     await page.goto('/lotes');
     await page.waitForURL(/\/login$/);
-    await expect(page.getByRole('heading', { name: 'ezcostura' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible();
   });
 });

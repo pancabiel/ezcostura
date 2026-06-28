@@ -14,6 +14,7 @@ import {
   login,
   RUN_TAG,
   safeFill,
+  selectRadix,
   todayISO,
   waitForSync,
 } from '../lib/helpers';
@@ -79,7 +80,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     // Locate the just-added pausa row — it's the only one in "Pausas (padrão)".
     const pausasSection = page.locator('section', { has: page.getByRole('heading', { name: 'Pausas (padrão)' }) });
     const pausaRow = pausasSection.locator('li').first();
-    await pausaRow.locator('select').selectOption({ label: 'Almoço' });
+    await selectRadix(page, pausaRow.getByRole('combobox', { name: 'Tipo de pausa' }), 'Almoço');
     await pausaRow.locator('input[type="time"]').nth(0).fill('12:00');
     await pausaRow.locator('input[type="time"]').nth(1).fill('13:00');
 
@@ -103,7 +104,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     await page.waitForURL(/\/operarios\/novo$/);
 
     await safeFill(page.getByLabel('Nome'), operarioNome);
-    await page.getByLabel('Jornada de trabalho').selectOption({ label: jornadaNome });
+    await selectRadix(page, page.getByRole('combobox', { name: 'Jornada de trabalho' }), jornadaNome);
 
     await page.getByRole('button', { name: 'Criar funcionário' }).click();
     await page.waitForURL(/\/operarios$/);
@@ -118,15 +119,15 @@ test('full production flow: jornada → operário → dia especial → lote → 
     await page.waitForURL(/\/configuracoes\/dias-especiais$/);
     await page.getByRole('button', { name: '+ Novo dia especial' }).click();
 
-    // The modal is unlabeled but has its own form — scope by the heading.
-    const modal = page.locator('div', { has: page.getByRole('heading', { name: 'Novo dia especial' }) }).last();
+    // The modal is a shadcn Dialog — scope by its role.
+    const modal = page.getByRole('dialog');
 
     await modal.getByLabel('Data').fill(diaEspecialData);
     await safeFill(modal.getByLabel('Descrição'), diaEspecialDescricao);
     // Defaults 07:00-13:00 are fine for a half-day.
 
-    // Tick our test operário in the operários grid.
-    await modal.getByRole('checkbox', { name: new RegExp(operarioNome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).check();
+    // Tick our test operário in the operários grid (Radix checkbox → click to toggle on).
+    await modal.getByRole('checkbox', { name: new RegExp(operarioNome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
 
     await modal.getByRole('button', { name: 'Salvar' }).click();
     // Modal closes → list shows the new dia.
@@ -146,7 +147,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     await safeFill(page.getByLabel('Nome'), loteNome);
 
     // Add two operações.
-    const operacoesSection = page.locator('div.bg-white', { has: page.getByRole('heading', { name: 'Operações' }) });
+    const operacoesSection = page.getByRole('region', { name: 'Operações' });
     await operacoesSection.getByRole('button', { name: '+ Adicionar' }).click();
     let opRows = operacoesSection.locator('div.flex.gap-3');
     await safeFill(opRows.nth(0).getByLabel('Nome'), operacaoCostura);
@@ -158,7 +159,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     await safeFill(opRows.nth(1).getByLabel('Meta / hora'), String(META_ACABAMENTO_POR_HORA));
 
     // Add three tamanhos.
-    const tamanhosSection = page.locator('div.bg-white', { has: page.getByRole('heading', { name: 'Tamanhos' }) });
+    const tamanhosSection = page.getByRole('region', { name: 'Tamanhos' });
     for (const [tam, qtd] of [['P', 50], ['M', 50], ['G', 30]] as const) {
       await tamanhosSection.getByRole('button', { name: '+ Adicionar' }).click();
       const tamRows = tamanhosSection.locator('div.flex.gap-3');
@@ -223,11 +224,11 @@ test('full production flow: jornada → operário → dia especial → lote → 
 
     await card.getByRole('button', { name: '+ Pack' }).click();
 
-    // Modal — scope by heading.
-    const modal = page.locator('div.fixed', { has: page.getByRole('heading', { name: 'Adicionar pack' }) });
-    await modal.getByLabel('Lote').selectOption({ label: `${loteCodigo} — ${loteNome}` });
-    await modal.getByLabel('Operação').selectOption({ label: operacaoCostura });
-    await modal.getByLabel('Tamanho').selectOption({ value: TAMANHO_PACK });
+    // Modal — shadcn Dialog with Radix selects.
+    const modal = page.getByRole('dialog');
+    await selectRadix(page, modal.getByRole('combobox', { name: 'Lote' }), `${loteCodigo} — ${loteNome}`);
+    await selectRadix(page, modal.getByRole('combobox', { name: 'Operação' }), operacaoCostura);
+    await selectRadix(page, modal.getByRole('combobox', { name: 'Tamanho' }), new RegExp(`^${TAMANHO_PACK}\\b`));
     await safeFill(modal.getByLabel('Quantidade de peças'), String(QTD_PACK));
 
     await modal.getByRole('button', { name: 'Registrar' }).click();
@@ -274,7 +275,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     );
 
     // KPI: total >= QTD_PACK.
-    const totalKpi = page.locator('div.bg-white.border', { has: page.getByText('Total de peças') }).first();
+    const totalKpi = page.locator('[data-slot="card"]', { has: page.getByText('Total de peças') }).first();
     const totalText = (await totalKpi.locator('p.text-2xl, p.text-3xl').first().textContent()) ?? '0';
     const totalNum = parseInt(totalText.replace(/\D/g, ''), 10);
     expect(totalNum, 'total peças KPI is below the pack we just registered').toBeGreaterThanOrEqual(QTD_PACK);

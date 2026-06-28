@@ -16,6 +16,7 @@ import AusenciasPage from './features/ausencias/AusenciasPage';
 import SenhaPage from './features/configuracoes/SenhaPage';
 import PortalLoginPage from './features/portal/PortalLoginPage';
 import PortalHomePage from './features/portal/PortalHomePage';
+import PortalSemanaPage from './features/portal/PortalSemanaPage';
 import PortalChangePinPage from './features/portal/PortalChangePinPage';
 import PortalGuard from './features/portal/PortalGuard';
 import { useAuthStore } from './stores/authStore';
@@ -35,6 +36,14 @@ export default function App() {
         element={
           <PortalGuard>
             <PortalHomePage />
+          </PortalGuard>
+        }
+      />
+      <Route
+        path="/meu/semana"
+        element={
+          <PortalGuard>
+            <PortalSemanaPage />
           </PortalGuard>
         }
       />

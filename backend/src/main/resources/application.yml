@@ -45,6 +45,10 @@ ezcostura:
     secret: ${JWT_SECRET:dev-only-do-not-use-in-prod-dev-only-do-not-use-in-prod}
     access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:3600}
     refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:1209600}
+    # Portal do operário: TTLs mais curtos (login por CPF é chutável). Não afeta o admin.
+    operario:
+      access-ttl-seconds: ${JWT_OPERARIO_ACCESS_TTL_SECONDS:1800}
+      refresh-ttl-seconds: ${JWT_OPERARIO_REFRESH_TTL_SECONDS:604800}
   cors:
     # Comma-separated list of explicit origins. No wildcards.
     allowed-origins: ${EZCOSTURA_CORS_ORIGINS:http://localhost:5173}

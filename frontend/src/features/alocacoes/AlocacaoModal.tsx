@@ -6,6 +6,26 @@ import { useConfirm } from '../../components/ConfirmDialog';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
   operarioId: string;
@@ -99,112 +119,107 @@ export default function AlocacaoModal({
   };
 
   return (
-    <Modal onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
-        <div>
-          <h3 className="text-xl font-semibold">{alocacao ? 'Editar alocação' : 'Nova alocação'}</h3>
-          <p className="text-sm text-slate-500">{operarioNome} · {formatDate(data)}</p>
-        </div>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>{alocacao ? 'Editar alocação' : 'Nova alocação'}</DialogTitle>
+            <DialogDescription>{operarioNome} · {formatDate(data)}</DialogDescription>
+          </DialogHeader>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">{error}</div>
-        )}
-
-        <Field label="Horário de início">
-          <div className="space-y-2">
-            <input
-              autoFocus
-              type="time"
-              value={horarioInicio}
-              onChange={(e) => setHorarioInicio(e.target.value)}
-              className="input"
-              required
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => horarioManha && setHorarioInicio(horarioManha)}
-                disabled={!horarioManha}
-                className="flex-1 px-3 py-2 rounded-md border border-slate-300 bg-white text-sm hover:bg-slate-50 disabled:opacity-50"
-              >
-                Manhã{horarioManha ? ` (${horarioManha})` : ''}
-              </button>
-              <button
-                type="button"
-                onClick={() => horarioTarde && setHorarioInicio(horarioTarde)}
-                disabled={!horarioTarde}
-                title={horarioTarde ? undefined : 'Configure uma pausa do tipo Almoço na Jornada'}
-                className="flex-1 px-3 py-2 rounded-md border border-slate-300 bg-white text-sm hover:bg-slate-50 disabled:opacity-50"
-              >
-                Tarde{horarioTarde ? ` (${horarioTarde})` : ''}
-              </button>
-            </div>
-          </div>
-        </Field>
-
-        <Field label="Lote">
-          <select value={loteId} onChange={(e) => setLoteId(e.target.value)} className="input" required>
-            <option value="">Selecione…</option>
-            {lotes.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.codigo} — {l.nome}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Operação">
-          <select
-            value={operacaoId}
-            onChange={(e) => setOperacaoId(e.target.value)}
-            className="input"
-            disabled={!lote}
-            required
-          >
-            <option value="">Selecione…</option>
-            {lote?.operacoes.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome} (meta {o.metaPorHora}/h)
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <div className="flex justify-end gap-3 pt-2">
-          {alocacao && (
-            <button type="button" onClick={remove} className="px-3 py-2 text-rose-700 hover:underline mr-auto">
-              Remover
-            </button>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border border-slate-300 bg-white">
-            Cancelar
-          </button>
-          <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50">
-            {saving ? 'Salvando…' : 'Salvar'}
-          </button>
-        </div>
-      </form>
-      <style>{`.input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
-    </Modal>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
-  );
-}
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="aloc-horario">Horário de início</FieldLabel>
+              <Input
+                id="aloc-horario"
+                autoFocus
+                type="time"
+                value={horarioInicio}
+                onChange={(e) => setHorarioInicio(e.target.value)}
+                required
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => horarioManha && setHorarioInicio(horarioManha)}
+                  disabled={!horarioManha}
+                >
+                  Manhã{horarioManha ? ` (${horarioManha})` : ''}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => horarioTarde && setHorarioInicio(horarioTarde)}
+                  disabled={!horarioTarde}
+                  title={horarioTarde ? undefined : 'Configure uma pausa do tipo Almoço na Jornada'}
+                >
+                  Tarde{horarioTarde ? ` (${horarioTarde})` : ''}
+                </Button>
+              </div>
+            </Field>
 
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
+            <Field>
+              <FieldLabel htmlFor="aloc-lote">Lote</FieldLabel>
+              <Select value={loteId} onValueChange={setLoteId}>
+                <SelectTrigger id="aloc-lote" aria-label="Lote" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {lotes.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.codigo} — {l.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="aloc-operacao">Operação</FieldLabel>
+              <Select value={operacaoId} onValueChange={setOperacaoId} disabled={!lote}>
+                <SelectTrigger id="aloc-operacao" aria-label="Operação" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {lote?.operacoes.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.nome} (meta {o.metaPorHora}/h)
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
+
+          <DialogFooter>
+            {alocacao && (
+              <Button type="button" variant="ghost" className="text-destructive sm:mr-auto" onClick={remove}>
+                Remover
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

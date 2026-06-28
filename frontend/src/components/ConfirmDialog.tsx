@@ -1,4 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export type ConfirmVariant = 'default' | 'danger';
 
@@ -35,87 +45,41 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const close = (value: boolean) => {
-    if (!pending) return;
-    pending.resolve(value);
-    setPending(null);
+    setPending((prev) => {
+      prev?.resolve(value);
+      return null;
+    });
   };
 
-  return (
-    <ConfirmContext.Provider value={confirm}>
-      {children}
-      {pending && (
-        <ConfirmModal
-          opts={pending.opts}
-          onConfirm={() => close(true)}
-          onCancel={() => close(false)}
-        />
-      )}
-    </ConfirmContext.Provider>
-  );
-}
-
-interface ConfirmModalProps {
-  opts: ConfirmOptions;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-function ConfirmModal({ opts, onConfirm, onCancel }: ConfirmModalProps) {
+  const opts = pending?.opts;
   const {
     title,
     message,
     confirmLabel = 'Confirmar',
     cancelLabel = 'Cancelar',
     variant = 'default',
-  } = opts;
-  const confirmBtnRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    confirmBtnRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-      if (e.key === 'Enter') onConfirm();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel, onConfirm]);
-
-  const confirmClass =
-    variant === 'danger'
-      ? 'bg-rose-600 hover:bg-rose-700 text-white'
-      : 'bg-slate-900 hover:bg-slate-800 text-white';
+  } = opts ?? {};
 
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {title && <h3 className="text-lg font-semibold">{title}</h3>}
-        <div className="text-sm text-slate-700">{message}</div>
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmBtnRef}
-            type="button"
-            onClick={onConfirm}
-            className={`px-4 py-2 rounded-md ${confirmClass}`}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmContext.Provider value={confirm}>
+      {children}
+      <AlertDialog open={!!pending} onOpenChange={(open) => !open && close(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            {title && <AlertDialogTitle>{title}</AlertDialogTitle>}
+            <AlertDialogDescription>{message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => close(false)}>{cancelLabel}</AlertDialogCancel>
+            <AlertDialogAction
+              variant={variant === 'danger' ? 'destructive' : 'default'}
+              onClick={() => close(true)}
+            >
+              {confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </ConfirmContext.Provider>
   );
 }

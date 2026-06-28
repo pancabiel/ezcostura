@@ -13,6 +13,19 @@ import type {
   PausaWire,
   TipoPausa,
 } from '../../types/jornada';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PausaForm extends PausaWire {
   _key: string;
@@ -257,114 +270,115 @@ export default function JornadaFormPage() {
     }
   };
 
-  if (loading) return <p className="text-slate-500">Carregando…</p>;
+  if (loading) return <p className="text-muted-foreground">Carregando…</p>;
 
   const horas = Math.floor(padraoMin / 60);
   const minutos = padraoMin % 60;
   const pausasPadrao = pausas.filter((p) => p.diaSemana === null);
 
   return (
-    <form onSubmit={submit} className="max-w-3xl mx-auto space-y-6">
+    <form onSubmit={submit} className="max-w-3xl mx-auto flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">{isEdit ? 'Editar jornada' : 'Nova jornada'}</h2>
-        <button
-          type="button"
-          onClick={() => navigate('/configuracoes/jornada')}
-          className="text-sm text-slate-600 hover:underline"
-        >
+        <Button type="button" variant="link" onClick={() => navigate('/configuracoes/jornada')}>
           Voltar
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-md text-sm">{error}</div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <section className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
-        <Field label="Nome">
-          <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} className="input" placeholder="Ex.: Padrão, Meio período…" />
+      <section className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+        <Field>
+          <FieldLabel htmlFor="jornada-nome">Nome</FieldLabel>
+          <Input id="jornada-nome" autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Padrão, Meio período…" />
         </Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Início">
-            <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} className="input" />
+          <Field>
+            <FieldLabel htmlFor="jornada-inicio">Início</FieldLabel>
+            <Input id="jornada-inicio" type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} />
           </Field>
-          <Field label="Fim">
-            <input type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} className="input" />
+          <Field>
+            <FieldLabel htmlFor="jornada-fim">Fim</FieldLabel>
+            <Input id="jornada-fim" type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} />
           </Field>
         </div>
-        <p className="text-sm text-slate-600">
-          Tempo trabalhado padrão: <span className="font-semibold">{horas}h {minutos}min</span>
+        <p className="text-sm text-muted-foreground">
+          Tempo trabalhado padrão: <span className="font-semibold text-foreground">{horas}h {minutos}min</span>
         </p>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-md p-6 space-y-3">
+      <section className="rounded-xl border bg-card p-6 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Pausas (padrão)</h3>
-          <button type="button" onClick={() => addPausa(null)} className="text-sm text-slate-700 hover:underline">
+          <Button type="button" variant="link" size="sm" onClick={() => addPausa(null)}>
             + Adicionar pausa
-          </button>
+          </Button>
         </div>
         {pausasPadrao.length === 0 ? (
-          <p className="text-sm text-slate-500 italic">Sem pausas definidas.</p>
+          <p className="text-sm text-muted-foreground italic">Sem pausas definidas.</p>
         ) : (
           <PausaList pausas={pausasPadrao} onUpdate={updatePausa} onRemove={removePausa} />
         )}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-md p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Horários especiais por dia da semana</h3>
-        </div>
-        <p className="text-sm text-slate-500">
+      <section className="rounded-xl border bg-card p-6 flex flex-col gap-3">
+        <h3 className="font-semibold">Horários especiais por dia da semana</h3>
+        <p className="text-sm text-muted-foreground">
           Sobrescreve o horário padrão em dias específicos (ex.: sexta-feira mais curta).
         </p>
         <div className="grid grid-cols-7 gap-2">
           {DIAS_SEMANA.map((d) => {
             const ov = overridesByDia.get(d.value);
             return (
-              <button
+              <Button
                 key={d.value}
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => (ov ? null : addOverride(d.value))}
                 disabled={Boolean(ov)}
-                className={`px-2 py-1.5 rounded-md text-xs border transition-colors ${
-                  ov ? 'bg-emerald-50 border-emerald-300 text-emerald-700 cursor-default' : 'border-slate-300 hover:bg-slate-50'
-                }`}
+                className={cn(
+                  ov && 'border-emerald-300 bg-emerald-50 text-emerald-700 disabled:opacity-100 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300',
+                )}
               >
                 {d.short}
-              </button>
+              </Button>
             );
           })}
         </div>
         {overrides.length === 0 ? (
-          <p className="text-sm text-slate-500 italic">Sem horários especiais.</p>
+          <p className="text-sm text-muted-foreground italic">Sem horários especiais.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="flex flex-col gap-3">
             {overrides
               .slice()
               .sort((a, b) => a.diaSemana - b.diaSemana)
               .map((o) => {
                 const pausasDoDia = pausas.filter((p) => p.diaSemana === o.diaSemana);
                 return (
-                  <li key={o._key} className="border border-slate-200 rounded-md p-3 space-y-3">
+                  <li key={o._key} className="rounded-md border p-3 flex flex-col gap-3">
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="font-semibold text-sm">{DIAS_SEMANA[o.diaSemana].label}</span>
-                      <input type="time" value={o.horaInicio} onChange={(e) => updateOverride(o._key, { horaInicio: e.target.value })} className="input w-32" />
+                      <Input type="time" value={o.horaInicio} onChange={(e) => updateOverride(o._key, { horaInicio: e.target.value })} className="w-32" />
                       <span>–</span>
-                      <input type="time" value={o.horaFim} onChange={(e) => updateOverride(o._key, { horaFim: e.target.value })} className="input w-32" />
-                      <button type="button" onClick={() => removeOverride(o._key)} className="text-rose-600 text-sm ml-auto hover:underline">
+                      <Input type="time" value={o.horaFim} onChange={(e) => updateOverride(o._key, { horaFim: e.target.value })} className="w-32" />
+                      <Button type="button" variant="ghost" size="sm" className="text-destructive ml-auto" onClick={() => removeOverride(o._key)}>
                         remover
-                      </button>
+                      </Button>
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-slate-500">Pausas específicas do dia</span>
-                        <button type="button" onClick={() => addPausa(o.diaSemana)} className="text-xs text-slate-700 hover:underline">
+                        <span className="text-xs text-muted-foreground">Pausas específicas do dia</span>
+                        <Button type="button" variant="link" size="sm" onClick={() => addPausa(o.diaSemana)}>
                           + adicionar pausa
-                        </button>
+                        </Button>
                       </div>
                       {pausasDoDia.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">Usa as pausas padrão.</p>
+                        <p className="text-xs text-muted-foreground italic">Usa as pausas padrão.</p>
                       ) : (
                         <PausaList pausas={pausasDoDia} onUpdate={updatePausa} onRemove={removePausa} />
                       )}
@@ -378,19 +392,17 @@ export default function JornadaFormPage() {
 
       <div className="flex justify-end gap-3">
         {isEdit && (
-          <button type="button" onClick={remove} disabled={removing} className="px-3 py-2 text-rose-700 hover:underline mr-auto disabled:opacity-50">
+          <Button type="button" variant="ghost" className="text-destructive mr-auto" onClick={remove} disabled={removing}>
             {removing ? 'Removendo…' : 'Remover'}
-          </button>
+          </Button>
         )}
-        <button type="button" onClick={() => navigate('/configuracoes/jornada')} className="px-4 py-2 rounded-md border border-slate-300 bg-white">
+        <Button type="button" variant="outline" size="lg" onClick={() => navigate('/configuracoes/jornada')}>
           Cancelar
-        </button>
-        <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50">
+        </Button>
+        <Button type="submit" size="lg" disabled={saving}>
           {saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar jornada'}
-        </button>
+        </Button>
       </div>
-
-      <style>{`.input { padding: 0.5rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
     </form>
   );
 }
@@ -405,39 +417,37 @@ function PausaList({
   onRemove: (key: string) => void;
 }) {
   return (
-    <ul className="space-y-2">
+    <ul className="flex flex-col gap-2">
       {pausas.map((p) => (
         <li key={p._key} className="flex flex-wrap gap-2 items-center">
-          <select value={p.tipo} onChange={(e) => onUpdate(p._key, { tipo: e.target.value as TipoPausa })} className="input">
-            {TIPO_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <Select value={p.tipo} onValueChange={(v) => onUpdate(p._key, { tipo: v as TipoPausa })}>
+            <SelectTrigger aria-label="Tipo de pausa">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {TIPO_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
           {p.tipo === 'OUTRO' && (
-            <input
+            <Input
               value={p.nome}
               onChange={(e) => onUpdate(p._key, { nome: e.target.value })}
               placeholder="Descrição"
-              className="input flex-1 min-w-[120px]"
+              aria-label="Descrição da pausa"
+              className="flex-1 min-w-[120px]"
             />
           )}
-          <input type="time" value={p.horaInicio} onChange={(e) => onUpdate(p._key, { horaInicio: e.target.value })} className="input" />
-          <input type="time" value={p.horaFim} onChange={(e) => onUpdate(p._key, { horaFim: e.target.value })} className="input" />
-          <button type="button" onClick={() => onRemove(p._key)} className="text-rose-600 text-sm px-2 hover:underline">
+          <Input type="time" value={p.horaInicio} onChange={(e) => onUpdate(p._key, { horaInicio: e.target.value })} className="w-32" />
+          <Input type="time" value={p.horaFim} onChange={(e) => onUpdate(p._key, { horaFim: e.target.value })} className="w-32" />
+          <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => onRemove(p._key)}>
             remover
-          </button>
+          </Button>
         </li>
       ))}
     </ul>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
-  );
-}
-

@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import SyncStatusBadge from './SyncStatusBadge';
 import { useAuthStore } from '../stores/authStore';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export default function Layout() {
   const session = useAuthStore((s) => s.session);
@@ -16,7 +18,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <header className="bg-slate-900 text-white px-4 md:px-6 py-3 flex items-center justify-between gap-4 shadow flex-wrap">
+      <header className="bg-primary text-primary-foreground px-4 md:px-6 py-3 flex items-center justify-between gap-4 shadow flex-wrap">
         <div className="flex items-center gap-4 md:gap-6 flex-wrap">
           <h1 className="text-xl font-semibold">ezcostura</h1>
           <nav className="flex gap-1 flex-wrap">
@@ -35,12 +37,16 @@ export default function Layout() {
           <SyncStatusBadge />
           {session && (
             <div className="flex items-center gap-2 text-sm">
-              <span className="hidden md:inline text-slate-300">
+              <span className="hidden md:inline text-primary-foreground/70">
                 {session.username} · {session.tenantId} · {session.role}
               </span>
-              <button onClick={logout} className="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm">
+              <Button
+                size="sm"
+                onClick={logout}
+                className="bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+              >
                 Sair
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -57,9 +63,12 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `px-3 py-2 rounded-md text-sm transition-colors ${
-          isActive ? 'bg-slate-700' : 'hover:bg-slate-800'
-        }`
+        cn(
+          'px-3 py-2 rounded-md text-sm transition-colors',
+          isActive
+            ? 'bg-primary-foreground/20'
+            : 'hover:bg-primary-foreground/10',
+        )
       }
     >
       {children}

@@ -411,7 +411,7 @@ async function pullOperarios() {
         id: r.id, serverId: r.id,
         nome: r.nome, cpf: r.cpf, telefone: r.telefone,
         dataAdmissao: r.dataAdmissao, ativo: r.ativo,
-        jornadaId: localJornadaId,
+        jornadaId: localJornadaId, temPin: r.temPin,
         syncStatus: 'synced', updatedAt: r.updatedAt ?? new Date().toISOString(),
       });
     } else if (existing.syncStatus === 'synced') {
@@ -419,7 +419,7 @@ async function pullOperarios() {
         ...existing,
         nome: r.nome, cpf: r.cpf, telefone: r.telefone,
         dataAdmissao: r.dataAdmissao, ativo: r.ativo,
-        jornadaId: localJornadaId,
+        jornadaId: localJornadaId, temPin: r.temPin,
         updatedAt: r.updatedAt ?? existing.updatedAt,
       });
     }

@@ -3,6 +3,26 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDb } from '../../db/dexie';
 import { operariosRepo } from './operariosRepo';
+import { formatCpf, formatTelefone } from './format';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface FormState {
   nome: string;
@@ -21,23 +41,6 @@ const empty: FormState = {
   ativo: true,
   jornadaId: '',
 };
-
-function formatCpf(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-}
-
-function formatTelefone(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 2) return `(${d}`;
-  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-}
 
 export default function OperarioFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -122,99 +125,99 @@ export default function OperarioFormPage() {
     }
   };
 
-  if (loading) return <p className="text-slate-500">Carregando…</p>;
+  if (loading) return <p className="text-muted-foreground">Carregando…</p>;
 
   return (
-    <form onSubmit={submit} className="max-w-xl mx-auto space-y-6">
+    <form onSubmit={submit} className="max-w-xl mx-auto flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">{isEdit ? 'Editar funcionário' : 'Novo funcionário'}</h2>
-        <button type="button" onClick={() => navigate('/operarios')} className="text-sm text-slate-600 hover:underline">
+        <Button type="button" variant="link" onClick={() => navigate('/operarios')}>
           Cancelar
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-md">{error}</div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
-        <Field label="Nome">
-          <input autoFocus value={form.nome} onChange={(e) => update('nome', e.target.value)} className="input" />
-        </Field>
-        <Field label="CPF">
-          <input
-            value={form.cpf}
-            onChange={(e) => update('cpf', formatCpf(e.target.value))}
-            inputMode="numeric"
-            placeholder="000.000.000-00"
-            className="input"
-          />
-        </Field>
-        <Field label="Telefone">
-          <input
-            value={form.telefone}
-            onChange={(e) => update('telefone', formatTelefone(e.target.value))}
-            inputMode="tel"
-            placeholder="(00) 00000-0000"
-            className="input"
-          />
-        </Field>
-        <Field label="Data de admissão">
-          <input
-            type="date"
-            value={form.dataAdmissao}
-            onChange={(e) => update('dataAdmissao', e.target.value)}
-            className="input"
-          />
-        </Field>
-        <Field label="Jornada de trabalho">
-          <select
-            value={form.jornadaId}
-            onChange={(e) => update('jornadaId', e.target.value)}
-            className="input"
-            required
-          >
-            <option value="">Selecione…</option>
-            {jornadas.map((j) => (
-              <option key={j.id} value={j.id}>{j.nome}</option>
-            ))}
-          </select>
-          {jornadas.length === 0 && (
-            <p className="text-xs text-rose-700 mt-1">
-              Cadastre uma jornada antes em Configurações &gt; Jornada.
-            </p>
-          )}
-        </Field>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={form.ativo}
-            onChange={(e) => update('ativo', e.target.checked)}
-            className="h-4 w-4"
-          />
-          <span className="text-sm">Ativo</span>
-        </label>
-      </div>
+      <Card>
+        <CardContent>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="nome">Nome</FieldLabel>
+              <Input id="nome" autoFocus value={form.nome} onChange={(e) => update('nome', e.target.value)} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="cpf">CPF</FieldLabel>
+              <Input
+                id="cpf"
+                value={form.cpf}
+                onChange={(e) => update('cpf', formatCpf(e.target.value))}
+                inputMode="numeric"
+                placeholder="000.000.000-00"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="telefone">Telefone</FieldLabel>
+              <Input
+                id="telefone"
+                value={form.telefone}
+                onChange={(e) => update('telefone', formatTelefone(e.target.value))}
+                inputMode="tel"
+                placeholder="(00) 00000-0000"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="dataAdmissao">Data de admissão</FieldLabel>
+              <Input
+                id="dataAdmissao"
+                type="date"
+                value={form.dataAdmissao}
+                onChange={(e) => update('dataAdmissao', e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="jornadaId">Jornada de trabalho</FieldLabel>
+              <Select value={form.jornadaId} onValueChange={(v) => update('jornadaId', v)}>
+                <SelectTrigger id="jornadaId" aria-label="Jornada de trabalho" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {jornadas.map((j) => (
+                      <SelectItem key={j.id} value={j.id}>{j.nome}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              {jornadas.length === 0 && (
+                <FieldDescription className="text-destructive">
+                  Cadastre uma jornada antes em Configurações &gt; Jornada.
+                </FieldDescription>
+              )}
+            </Field>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="ativo"
+                checked={form.ativo}
+                onCheckedChange={(v) => update('ativo', v === true)}
+              />
+              <FieldLabel htmlFor="ativo" className="font-normal">Ativo</FieldLabel>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={() => navigate('/operarios')} className="px-4 py-2 rounded-md border border-slate-300 bg-white">
+        <Button type="button" variant="outline" size="lg" onClick={() => navigate('/operarios')}>
           Cancelar
-        </button>
-        <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50">
+        </Button>
+        <Button type="submit" size="lg" disabled={saving}>
           {saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar funcionário'}
-        </button>
+        </Button>
       </div>
-
-      <style>{`.input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
   );
 }

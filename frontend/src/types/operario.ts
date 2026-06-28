@@ -10,6 +10,8 @@ export interface OperarioLocal {
   ativo: boolean;
   /** Sempre o id local da jornada (resolvido do serverId quando vem do backend). */
   jornadaId: string;
+  /** Tem acesso ao portal do operário (PIN definido). Vem do backend no pull. */
+  temPin?: boolean;
   syncStatus: SyncStatus;
   updatedAt: string;
   syncError?: string;
@@ -24,6 +26,7 @@ export interface OperarioWire {
   dataAdmissao: string;
   ativo: boolean;
   jornadaId: string;
+  temPin?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

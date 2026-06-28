@@ -40,21 +40,30 @@ export async function waitForSync(page: Page, timeoutMs = 30_000) {
           r.onerror = () => reject(r.error);
         });
       const dbs = await indexedDB.databases();
-      const meta = dbs.find((d) => d.name === 'ezcostura');
-      if (!meta?.name) return { ready: true, pending: 0, errors: [] };
-      const db = await open(meta.name);
+      // Multi-tenant: the app stores per-tenant DBs named `ezcostura_<tenant>`
+      // (legacy single-DB builds used `ezcostura`). Aggregate across all of them
+      // so this helper keeps working after the per-tenant Dexie split.
+      const names = dbs
+        .map((d) => d.name)
+        .filter((n): n is string => !!n && (n === 'ezcostura' || n.startsWith('ezcostura_')));
+      if (names.length === 0) return { ready: true, pending: 0, error: 0, counts: {} };
       const counts: Record<string, { pending: number; error: number; errorRows: any[] }> = {};
       const tables = ['jornadas', 'operarios', 'lotes', 'diasEspeciais', 'alocacoes', 'packs', 'ausencias'];
-      for (const t of tables) {
-        if (!db.objectStoreNames.contains(t)) continue;
-        const rows: any[] = await new Promise((resolve) => {
-          const req = db.transaction(t, 'readonly').objectStore(t).getAll();
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve([]);
-        });
-        const pending = rows.filter((r) => r.syncStatus === 'pending').length;
-        const errs = rows.filter((r) => r.syncStatus === 'error');
-        counts[t] = { pending, error: errs.length, errorRows: errs.map((r) => ({ id: r.id, nome: r.nome ?? r.codigo ?? r.descricao, syncError: r.syncError })) };
+      for (const name of names) {
+        const db = await open(name);
+        for (const t of tables) {
+          if (!db.objectStoreNames.contains(t)) continue;
+          const rows: any[] = await new Promise((resolve) => {
+            const req = db.transaction(t, 'readonly').objectStore(t).getAll();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve([]);
+          });
+          const pending = rows.filter((r) => r.syncStatus === 'pending').length;
+          const errs = rows.filter((r) => r.syncStatus === 'error');
+          const key = `${name}.${t}`;
+          counts[key] = { pending, error: errs.length, errorRows: errs.map((r) => ({ id: r.id, nome: r.nome ?? r.codigo ?? r.descricao, syncError: r.syncError })) };
+        }
+        db.close();
       }
       const totalPending = Object.values(counts).reduce((s, c) => s + c.pending, 0);
       const totalError = Object.values(counts).reduce((s, c) => s + c.error, 0);
@@ -69,6 +78,23 @@ export async function waitForSync(page: Page, timeoutMs = 30_000) {
     await page.waitForTimeout(500);
   }
   throw new Error(`Sync did not settle within ${timeoutMs}ms — last Dexie state:\n${lastSummary}`);
+}
+
+/**
+ * Select an option from a shadcn/Radix <Select> (NOT a native <select>, so
+ * Playwright's selectOption() won't work). Opens the combobox trigger, then
+ * clicks the option in the portalled listbox.
+ *
+ * `trigger` is the combobox button (locate via getByRole('combobox', { name })).
+ * `option` is the visible option text — string (substring match) or RegExp.
+ */
+export async function selectRadix(
+  page: Page,
+  trigger: import('@playwright/test').Locator,
+  option: string | RegExp,
+) {
+  await trigger.click();
+  await page.getByRole('option', { name: option }).click();
 }
 
 export async function loginApi(req: APIRequestContext): Promise<string> {

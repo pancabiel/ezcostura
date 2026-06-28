@@ -5,6 +5,27 @@ import { getDb } from '../../db/dexie';
 import { diasEspeciaisRepo, normalizeTime } from './jornadaRepo';
 import { useConfirm } from '../../components/ConfirmDialog';
 import type { DiaEspecialLocal, DiaEspecialPausaWire, TipoPausa } from '../../types/jornada';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Empty, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldLabel } from '@/components/ui/field';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PausaForm extends DiaEspecialPausaWire {
   _key: string;
@@ -34,24 +55,22 @@ export default function DiasEspeciaisPage() {
   const [editing, setEditing] = useState<DiaEspecialLocal | 'new' | null>(null);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="max-w-3xl mx-auto flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Dias especiais</h2>
-        <button onClick={() => setEditing('new')} className="bg-slate-900 text-white px-4 py-2 rounded-md text-sm hover:bg-slate-800">
-          + Novo dia especial
-        </button>
+        <Button onClick={() => setEditing('new')}>+ Novo dia especial</Button>
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted-foreground">
         Sobrescreve o horário de trabalho para uma data específica e para os funcionários selecionados (ex.: véspera de feriado).
       </p>
 
       {dias.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-md p-8 text-center text-slate-500">
-          Nenhum dia especial cadastrado.
-        </div>
+        <Empty className="border">
+          <EmptyTitle>Nenhum dia especial cadastrado.</EmptyTitle>
+        </Empty>
       ) : (
-        <ul className="space-y-2">
+        <ul className="flex flex-col gap-2">
           {dias.map((d) => {
             const opNomes = d.operarioIds
               .map((id) => operarios.find((o) => o.id === id)?.nome)
@@ -60,18 +79,18 @@ export default function DiasEspeciaisPage() {
               <li
                 key={d.id}
                 onClick={() => setEditing(d)}
-                className="bg-white border border-slate-200 rounded-md p-4 cursor-pointer hover:border-slate-400"
+                className="rounded-md border bg-card p-4 cursor-pointer transition-colors hover:border-ring"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">
                     {formatDateBR(d.data)}
-                    {d.descricao ? <span className="text-slate-500 font-normal"> · {d.descricao}</span> : null}
+                    {d.descricao ? <span className="text-muted-foreground font-normal"> · {d.descricao}</span> : null}
                   </span>
-                  <span className="font-mono text-sm text-slate-600">
+                  <span className="font-mono text-sm text-muted-foreground">
                     {normalizeTime(d.horaInicio)} – {normalizeTime(d.horaFim)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1 truncate">
+                <p className="text-xs text-muted-foreground mt-1 truncate">
                   {opNomes.length === 0 ? 'Nenhum funcionário' : opNomes.join(', ')}
                 </p>
               </li>
@@ -199,56 +218,71 @@ function DiaEspecialModal({
   const ativosCount = useMemo(() => operarios.length, [operarios]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <form onSubmit={submit} className="space-y-4">
-          <h3 className="text-xl font-semibold">{dia ? 'Editar dia especial' : 'Novo dia especial'}</h3>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>{dia ? 'Editar dia especial' : 'Novo dia especial'}</DialogTitle>
+          </DialogHeader>
 
           {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">{error}</div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Data">
-              <input autoFocus type="date" value={data} onChange={(e) => setData(e.target.value)} className="input" required />
+            <Field>
+              <FieldLabel htmlFor="de-data">Data</FieldLabel>
+              <Input id="de-data" autoFocus type="date" value={data} onChange={(e) => setData(e.target.value)} required />
             </Field>
-            <Field label="Descrição">
-              <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className="input" placeholder="Ex.: Véspera de feriado" />
+            <Field>
+              <FieldLabel htmlFor="de-descricao">Descrição</FieldLabel>
+              <Input id="de-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Véspera de feriado" />
             </Field>
-            <Field label="Início">
-              <input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} className="input" required />
+            <Field>
+              <FieldLabel htmlFor="de-inicio">Início</FieldLabel>
+              <Input id="de-inicio" type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} required />
             </Field>
-            <Field label="Fim">
-              <input type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} className="input" required />
+            <Field>
+              <FieldLabel htmlFor="de-fim">Fim</FieldLabel>
+              <Input id="de-fim" type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} required />
             </Field>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-slate-700">Pausas</span>
-              <button type="button" onClick={addPausa} className="text-sm text-slate-700 hover:underline">
+              <span className="text-sm font-medium">Pausas</span>
+              <Button type="button" variant="link" size="sm" onClick={addPausa}>
                 + Adicionar pausa
-              </button>
+              </Button>
             </div>
             {pausas.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">Sem pausas.</p>
+              <p className="text-xs text-muted-foreground italic">Sem pausas.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="flex flex-col gap-2">
                 {pausas.map((p) => (
                   <li key={p._key} className="flex flex-wrap gap-2 items-center">
-                    <select value={p.tipo} onChange={(e) => updatePausa(p._key, { tipo: e.target.value as TipoPausa })} className="input">
-                      {TIPO_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
+                    <Select value={p.tipo} onValueChange={(v) => updatePausa(p._key, { tipo: v as TipoPausa })}>
+                      <SelectTrigger aria-label="Tipo de pausa">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {TIPO_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                     {p.tipo === 'OUTRO' && (
-                      <input value={p.nome} onChange={(e) => updatePausa(p._key, { nome: e.target.value })} placeholder="Descrição" className="input flex-1 min-w-[120px]" />
+                      <Input value={p.nome} onChange={(e) => updatePausa(p._key, { nome: e.target.value })} placeholder="Descrição" aria-label="Descrição da pausa" className="flex-1 min-w-[120px]" />
                     )}
-                    <input type="time" value={p.horaInicio} onChange={(e) => updatePausa(p._key, { horaInicio: e.target.value })} className="input" />
-                    <input type="time" value={p.horaFim} onChange={(e) => updatePausa(p._key, { horaFim: e.target.value })} className="input" />
-                    <button type="button" onClick={() => removePausa(p._key)} className="text-rose-600 text-sm px-2 hover:underline">
+                    <Input type="time" value={p.horaInicio} onChange={(e) => updatePausa(p._key, { horaInicio: e.target.value })} className="w-32" />
+                    <Input type="time" value={p.horaFim} onChange={(e) => updatePausa(p._key, { horaFim: e.target.value })} className="w-32" />
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removePausa(p._key)}>
                       remover
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -257,55 +291,48 @@ function DiaEspecialModal({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-slate-700">Funcionários ({opIds.size}/{ativosCount})</span>
-              <div className="flex gap-2 text-xs">
-                <button type="button" onClick={() => setOpIds(new Set(operarios.map((o) => o.id)))} className="text-slate-700 hover:underline">
+              <span className="text-sm font-medium">Funcionários ({opIds.size}/{ativosCount})</span>
+              <div className="flex gap-2">
+                <Button type="button" variant="link" size="sm" onClick={() => setOpIds(new Set(operarios.map((o) => o.id)))}>
                   marcar todos
-                </button>
-                <button type="button" onClick={() => setOpIds(new Set())} className="text-slate-700 hover:underline">
+                </Button>
+                <Button type="button" variant="link" size="sm" onClick={() => setOpIds(new Set())}>
                   limpar
-                </button>
+                </Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto border border-slate-200 rounded-md p-2">
+            <div className="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto rounded-md border p-2">
               {operarios.length === 0 ? (
-                <p className="text-xs text-slate-500 italic col-span-2">Nenhum funcionário ativo.</p>
+                <p className="text-xs text-muted-foreground italic col-span-2">Nenhum funcionário ativo.</p>
               ) : operarios.map((o) => (
-                <label key={o.id} className="flex items-center gap-2 text-sm py-1 px-2 rounded hover:bg-slate-50 cursor-pointer">
-                  <input type="checkbox" checked={opIds.has(o.id)} onChange={() => toggleOp(o.id)} className="h-4 w-4" />
+                <FieldLabel
+                  key={o.id}
+                  htmlFor={`de-op-${o.id}`}
+                  className="flex items-center gap-2 text-sm py-1 px-2 rounded font-normal hover:bg-muted/50 cursor-pointer"
+                >
+                  <Checkbox id={`de-op-${o.id}`} checked={opIds.has(o.id)} onCheckedChange={() => toggleOp(o.id)} />
                   <span className="truncate">{o.nome}</span>
-                </label>
+                </FieldLabel>
               ))}
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <DialogFooter>
             {dia && (
-              <button type="button" onClick={remove} className="px-3 py-2 text-rose-700 hover:underline mr-auto">
+              <Button type="button" variant="ghost" className="text-destructive sm:mr-auto" onClick={remove}>
                 Remover
-              </button>
+              </Button>
             )}
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border border-slate-300 bg-white">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
-            </button>
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50">
+            </Button>
+            <Button type="submit" disabled={saving}>
               {saving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </div>
-
-          <style>{`.input { padding: 0.5rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
+      </DialogContent>
+    </Dialog>
   );
 }
 

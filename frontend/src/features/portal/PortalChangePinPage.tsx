@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { meApi } from './portalApi';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 
 const onlyDigits = (s: string) => s.replace(/\D/g, '').slice(0, 6);
 
@@ -44,89 +49,98 @@ export default function PortalChangePinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-muted/40 flex flex-col">
       <header className="bg-teal-700 text-white px-4 py-4 shadow-sm">
         <div className="max-w-md mx-auto flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => navigate('/meu')}
-            className="text-teal-100 hover:text-white text-xl leading-none"
+            className="text-teal-100 hover:bg-teal-800 hover:text-white text-xl"
             aria-label="Voltar"
           >
             ‹
-          </button>
+          </Button>
           <h1 className="text-lg font-bold">Trocar PIN</h1>
         </div>
       </header>
 
       <div className="flex-1 flex items-start justify-center px-4 py-6">
-        <form
-          onSubmit={handleSubmit}
-          className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4"
-        >
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">PIN atual</span>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              value={currentPin}
-              onChange={(e) => setCurrentPin(onlyDigits(e.target.value))}
-              placeholder="****"
-              maxLength={6}
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            />
-          </label>
+        <Card className="w-full max-w-sm">
+          <CardContent>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="pin-atual">PIN atual</FieldLabel>
+                  <Input
+                    id="pin-atual"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    value={currentPin}
+                    onChange={(e) => setCurrentPin(onlyDigits(e.target.value))}
+                    placeholder="****"
+                    maxLength={6}
+                    required
+                    className="tracking-widest"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pin-novo">Novo PIN (4 a 6 dígitos)</FieldLabel>
+                  <Input
+                    id="pin-novo"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    value={newPin}
+                    onChange={(e) => setNewPin(onlyDigits(e.target.value))}
+                    placeholder="****"
+                    maxLength={6}
+                    required
+                    className="tracking-widest"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pin-confirma">Confirmar novo PIN</FieldLabel>
+                  <Input
+                    id="pin-confirma"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    value={confirmPin}
+                    onChange={(e) => setConfirmPin(onlyDigits(e.target.value))}
+                    placeholder="****"
+                    maxLength={6}
+                    required
+                    className="tracking-widest"
+                  />
+                </Field>
+              </FieldGroup>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Novo PIN (4 a 6 dígitos)</span>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="new-password"
-              value={newPin}
-              onChange={(e) => setNewPin(onlyDigits(e.target.value))}
-              placeholder="****"
-              maxLength={6}
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            />
-          </label>
+              {erro && (
+                <Alert variant="destructive">
+                  <AlertDescription>{erro}</AlertDescription>
+                </Alert>
+              )}
+              {ok && (
+                <Alert className="border-emerald-200 text-emerald-800 dark:border-emerald-400/30 dark:text-emerald-300">
+                  <AlertDescription className="text-emerald-800 dark:text-emerald-300">
+                    PIN alterado com sucesso!
+                  </AlertDescription>
+                </Alert>
+              )}
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Confirmar novo PIN</span>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="new-password"
-              value={confirmPin}
-              onChange={(e) => setConfirmPin(onlyDigits(e.target.value))}
-              placeholder="****"
-              maxLength={6}
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-            />
-          </label>
-
-          {erro && (
-            <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
-              {erro}
-            </p>
-          )}
-          {ok && (
-            <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
-              PIN alterado com sucesso!
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || ok}
-            className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-semibold py-3 rounded-md transition"
-          >
-            {loading ? 'Salvando…' : 'Salvar novo PIN'}
-          </button>
-        </form>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={loading || ok}
+                className="w-full bg-teal-600 text-white hover:bg-teal-700"
+              >
+                {loading ? 'Salvando…' : 'Salvar novo PIN'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

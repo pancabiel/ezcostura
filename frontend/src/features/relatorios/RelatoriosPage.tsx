@@ -10,6 +10,21 @@ import {
 } from '../../services/syncService';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import type { JornadaEfetiva } from '../../types/jornada';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ProducaoOperarioDia {
   operarioId: string;
@@ -43,9 +58,9 @@ const overlapMin = (a1: number, a2: number, b1: number, b2: number) =>
   Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
 
 function pctBadge(pct: number) {
-  if (pct >= 100) return 'bg-emerald-100 text-emerald-700';
-  if (pct >= 75) return 'bg-amber-100 text-amber-700';
-  return 'bg-rose-100 text-rose-700';
+  if (pct >= 100) return 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300';
+  if (pct >= 75) return 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300';
+  return 'border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300';
 }
 function pctBar(pct: number) {
   if (pct >= 100) return 'bg-emerald-500';
@@ -55,11 +70,13 @@ function pctBar(pct: number) {
 
 function Kpi({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-md p-3 sm:p-4">
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">{value}</p>
-      {sub && <p className="text-[11px] text-slate-500 mt-1">{sub}</p>}
-    </div>
+    <Card size="sm">
+      <CardContent>
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-foreground mt-1">{value}</p>
+        {sub && <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -77,26 +94,26 @@ function HBars({
   unit?: string;
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
-  if (data.length === 0) return <p className="text-sm text-slate-500">Sem dados.</p>;
+  if (data.length === 0) return <p className="text-sm text-muted-foreground">Sem dados.</p>;
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       {data.map((d, i) => {
         const w = (d.value / max) * 100;
         return (
           <div key={i} className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="font-medium truncate text-slate-800">{d.label}</span>
-              <span className="font-mono text-slate-900 shrink-0">
+              <span className="font-medium truncate text-foreground">{d.label}</span>
+              <span className="font-mono text-foreground shrink-0">
                 {Number.isFinite(d.value) ? d.value : 0}{unit}
               </span>
             </div>
-            <div className="bg-slate-100 rounded-full h-3 overflow-hidden">
+            <div className="bg-muted rounded-full h-3 overflow-hidden">
               <div
                 className="h-3 rounded-full transition-all"
                 style={{ width: `${Math.min(100, w)}%`, background: color }}
               />
             </div>
-            {d.sub && <span className="text-[11px] text-slate-500">{d.sub}</span>}
+            {d.sub && <span className="text-[11px] text-muted-foreground">{d.sub}</span>}
           </div>
         );
       })}
@@ -112,7 +129,7 @@ function HBars({
 function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: string; value: number }[]; color?: string; unit?: string }) {
   const [active, setActive] = useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
-  if (data.length === 0) return <p className="text-sm text-slate-500">Sem dados.</p>;
+  if (data.length === 0) return <p className="text-sm text-muted-foreground">Sem dados.</p>;
   return (
     <div>
       <div className="flex items-end gap-1 h-44 overflow-x-auto pb-1">
@@ -127,7 +144,7 @@ function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: strin
               className="flex flex-col items-center justify-end h-full gap-1 min-w-[24px] sm:min-w-[28px]"
               title={`${d.label}: ${d.value}${unit}`}
             >
-              <span className={`text-[10px] ${isActive ? 'text-slate-900 font-semibold' : 'text-transparent'}`}>
+              <span className={cn('text-[10px]', isActive ? 'text-foreground font-semibold' : 'text-transparent')}>
                 {d.value || ''}
               </span>
               <div
@@ -138,7 +155,7 @@ function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: strin
                   minHeight: d.value > 0 ? 2 : 0,
                 }}
               />
-              <span className={`text-[10px] truncate w-full text-center ${isActive ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>
+              <span className={cn('text-[10px] truncate w-full text-center', isActive ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                 {d.label}
               </span>
             </button>
@@ -146,7 +163,7 @@ function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: strin
         })}
       </div>
       {active !== null && data[active] && (
-        <p className="text-xs text-slate-700 mt-2">
+        <p className="text-xs text-foreground mt-2">
           <span className="font-semibold">{data[active].label}:</span>{' '}
           <span className="font-mono">{data[active].value}{unit}</span>
         </p>
@@ -545,41 +562,28 @@ export default function RelatoriosPage() {
   const semDadosPeriodo = porDia.every((d) => d.value === 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <div className="max-w-6xl mx-auto flex flex-col gap-4">
       <h2 className="text-2xl font-semibold">Relatórios</h2>
 
-      <div className="bg-white border border-slate-200 rounded-md p-4 flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="block text-sm text-slate-700 mb-1">De</span>
-          <input
-            type="date"
-            value={inicio}
-            onChange={(e) => setInicio(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-md"
-          />
-        </label>
-        <label className="block">
-          <span className="block text-sm text-slate-700 mb-1">Até</span>
-          <input
-            type="date"
-            value={fim}
-            onChange={(e) => setFim(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-md"
-          />
-        </label>
-        <button
-          onClick={load}
-          className="bg-slate-900 text-white px-4 py-2 rounded-md text-sm hover:bg-slate-800"
-        >
-          Atualizar
-        </button>
-        {loading && <span className="text-sm text-slate-500">Carregando…</span>}
-      </div>
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-3">
+          <Field className="w-auto">
+            <FieldLabel htmlFor="rel-inicio">De</FieldLabel>
+            <Input id="rel-inicio" type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className="w-auto" />
+          </Field>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="rel-fim">Até</FieldLabel>
+            <Input id="rel-fim" type="date" value={fim} onChange={(e) => setFim(e.target.value)} className="w-auto" />
+          </Field>
+          <Button onClick={load}>Atualizar</Button>
+          {loading && <span className="text-sm text-muted-foreground">Carregando…</span>}
+        </CardContent>
+      </Card>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-md text-sm">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
@@ -589,47 +593,49 @@ export default function RelatoriosPage() {
         <Kpi label="Lotes produzidos" value={lotesProduzidos} sub="no período" />
       </div>
 
-      <section className="bg-white border border-slate-200 rounded-md p-4">
+      <section className="rounded-xl border bg-card p-4">
         <h3 className="font-semibold mb-3">Produção diária (peças)</h3>
         {semDadosPeriodo ? (
-          <p className="text-sm text-slate-500">Sem dados.</p>
+          <p className="text-sm text-muted-foreground">Sem dados.</p>
         ) : (
           <Timeline data={porDia} />
         )}
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <section className="bg-white border border-slate-200 rounded-md p-4">
+        <section className="rounded-xl border bg-card p-4">
           <h3 className="font-semibold mb-3">Top funcionários (peças)</h3>
           <HBars data={topOperarios} color="#0f766e" />
         </section>
-        <section className="bg-white border border-slate-200 rounded-md p-4">
+        <section className="rounded-xl border bg-card p-4">
           <h3 className="font-semibold mb-3">Top lotes (peças)</h3>
           <HBars data={topLotes} color="#1d4ed8" />
         </section>
       </div>
 
-      <section className="bg-white border border-slate-200 rounded-md p-4 space-y-4">
+      <section className="rounded-xl border bg-card p-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 className="font-semibold">Desempenho por funcionário</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Média do funcionário em cada operação e por dia no período.
             </p>
           </div>
-          <label className="block">
-            <span className="block text-sm text-slate-700 mb-1">Funcionário</span>
-            <select
-              value={operarioFoco}
-              onChange={(e) => setOperarioFoco(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-md min-w-[180px]"
-            >
-              {operariosComDados.length === 0 && <option value="">— Nenhum com dados —</option>}
-              {operariosComDados.map((o) => (
-                <option key={o.id} value={o.id}>{o.nome}</option>
-              ))}
-            </select>
-          </label>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="rel-operario">Funcionário</FieldLabel>
+            <Select value={operarioFoco} onValueChange={setOperarioFoco}>
+              <SelectTrigger id="rel-operario" aria-label="Funcionário" className="min-w-[180px]">
+                <SelectValue placeholder="— Nenhum com dados —" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {operariosComDados.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         </div>
 
         {operarioFoco && (
@@ -655,86 +661,75 @@ export default function RelatoriosPage() {
             <div>
               <h4 className="font-semibold text-sm mb-2">Média por operação (%)</h4>
               {porOperacao.length === 0
-                ? <p className="text-sm text-slate-500">Sem dados.</p>
+                ? <p className="text-sm text-muted-foreground">Sem dados.</p>
                 : <HBars data={porOperacao} color="#0f766e" unit="%" />}
             </div>
 
             <div>
               <h4 className="font-semibold text-sm mb-2">Média total por dia (%)</h4>
               {porDiaOperario.every((d) => d.value === 0)
-                ? <p className="text-sm text-slate-500">Sem dados.</p>
+                ? <p className="text-sm text-muted-foreground">Sem dados.</p>
                 : <Timeline data={porDiaOperario} unit="%" />}
             </div>
           </>
         )}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-md p-4 space-y-4">
+      <section className="rounded-xl border bg-card p-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 className="font-semibold">Detalhe do dia</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Por alocação. Meta = meta/hora × horas trabalhadas (até a próxima alocação ou
               fim de turno do funcionário), descontando pausas e ausências. Total do funcionário =
               média das % de cada operação.
             </p>
           </div>
-          <label className="block">
-            <span className="block text-sm text-slate-700 mb-1">Dia</span>
-            <input
-              type="date"
-              value={diaDetalhe}
-              onChange={(e) => setDiaDetalhe(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-md"
-            />
-          </label>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="rel-dia">Dia</FieldLabel>
+            <Input id="rel-dia" type="date" value={diaDetalhe} onChange={(e) => setDiaDetalhe(e.target.value)} className="w-auto" />
+          </Field>
         </div>
 
         {detalheDia.length === 0 ? (
-          <p className="text-sm text-slate-500">Sem alocações neste dia.</p>
+          <p className="text-sm text-muted-foreground">Sem alocações neste dia.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {detalheDia.map((row) => (
-              <div key={row.operarioId} className="border border-slate-100 rounded-md p-3">
+              <div key={row.operarioId} className="border rounded-md p-3">
                 <div className="flex items-center justify-between mb-2 gap-2">
-                  <h4 className="font-semibold truncate">
+                  <h4 className="font-semibold truncate flex items-center gap-2">
                     {row.operarioNome}
                     {row.ausenciaTipo && (
-                      <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-normal">
-                        {row.ausenciaTipo}
-                      </span>
+                      <Badge variant="secondary" className="font-normal">{row.ausenciaTipo}</Badge>
                     )}
                   </h4>
-                  <span className="text-sm whitespace-nowrap">
+                  <span className="text-sm whitespace-nowrap flex items-center gap-1">
                     <span className="font-mono">{row.totalProduzido}</span>
-                    <span className="text-slate-400"> / </span>
+                    <span className="text-muted-foreground"> / </span>
                     <span className="font-mono">{row.totalMeta}</span>{' '}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${pctBadge(row.totalPct)}`}>
-                      {row.totalPct}%
-                    </span>
+                    <Badge className={cn(pctBadge(row.totalPct))}>{row.totalPct}%</Badge>
                   </span>
                 </div>
-                <ul className="space-y-2">
+                <ul className="flex flex-col gap-2">
                   {row.itens.map((it) => (
                     <li key={it.alocId}>
                       <div className="flex justify-between text-sm mb-1 gap-2">
-                        <span className="text-slate-700 min-w-0 truncate">
+                        <span className="text-foreground min-w-0 truncate">
                           <span className="font-mono">{it.horario}</span>
-                          <span className="text-slate-400"> · </span>
+                          <span className="text-muted-foreground"> · </span>
                           {it.loteCodigo} · {it.operacao}
-                          <span className="text-slate-400"> · </span>
-                          <span className="text-slate-500">{it.horas.toFixed(1)}h</span>
+                          <span className="text-muted-foreground"> · </span>
+                          <span className="text-muted-foreground">{it.horas.toFixed(1)}h</span>
                         </span>
-                        <span className="font-mono whitespace-nowrap">
+                        <span className="font-mono whitespace-nowrap flex items-center gap-1">
                           {it.produzido} / {it.meta}{' '}
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${pctBadge(it.pct)}`}>
-                            {it.pct}%
-                          </span>
+                          <Badge className={cn(pctBadge(it.pct))}>{it.pct}%</Badge>
                         </span>
                       </div>
-                      <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div className="bg-muted rounded-full h-2 overflow-hidden">
                         <div
-                          className={`h-2 transition-all ${pctBar(it.pct)}`}
+                          className={cn('h-2 transition-all', pctBar(it.pct))}
                           style={{ width: `${Math.min(100, it.pct)}%` }}
                         />
                       </div>

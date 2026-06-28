@@ -6,7 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Multi-tenant SaaS for clothing-factory production tracking ("ezcostura"). Operators register packs of finished pieces from a shop floor on tablets — works offline, syncs when online. Deployed as Docker, multiple tenants in one Postgres (schema-per-tenant).
 
-UI is in Brazilian Portuguese; domain terms in code are Portuguese (`lote` = batch, `operario` = operator, `alocacao` = allocation, `pack`, `jornada` = work-shift schedule, `ausencia` = absence, `facilitador` = shop-floor screen).
+UI is in Brazilian Portuguese; domain terms in code are Portuguese (`lote` = batch, `operario` = operator, `alocacao` = allocation, `pack`, `jornada` = work-shift schedule, `ausencia` = absence, `facilitador` = shop-floor screen). Full term list in [`docs/glossary.md`](docs/glossary.md).
+
+The **why** behind the non-obvious architectural decisions lives in [`docs/adr/`](docs/adr/) (Architecture Decision Records) — read these before changing tenancy, the WebFlux/JDBC split, sync, the Spring Data JDBC FK workarounds, or auth.
+
+To build a new change, follow [`docs/WORKFLOW.md`](docs/WORKFLOW.md) (pick a track → shape → build → gate → review → verify → ship, with a project-specific landmine checklist). The `/feature` skill drives it interactively.
 
 ## Common commands
 
@@ -70,13 +74,13 @@ The backend is **WebFlux on the outside, JDBC on the inside**. Controllers retur
 - BCrypt cost 12. CSRF disabled (no cookies).
 - CORS allowlist enforced; `CorsConfig` throws on startup if `*` is configured.
 - Frontend `lib/axios.ts` injects `Authorization` header and on 401 calls `/api/auth/refresh` once (de-duped via a shared `refreshing` promise) before logging out.
-- Roles: `ADMIN` (full access) and `OPERADOR` (only the shop-floor screen).
+- Roles: `ADMIN` (full access), `OPERADOR` (only the shop-floor screen), and `OPERARIO_SELF` (operário portal — sees only their own data; see ADR-0006).
 
 ### Spring Data JDBC aggregate gotcha
 This bit the project hard — see `V8` and `V9` migrations:
 - Spring Data JDBC with `@MappedCollection` saves an aggregate by **deleting and reinserting all child rows** — even when child IDs are unchanged.
 - Any FK from another table into a child table (`alocacoes.operacao_id` → `lote_operacoes.id`) blocks the intermediate DELETE step. Fix: declare the FK `DEFERRABLE INITIALLY DEFERRED` (V9).
-- Where deferral isn't viable (`packs` referencing `lote_operacoes`), drop the FK and **snapshot the referenced fields onto the row** (V8: `pack.lote_id`, `operacao_id`, `lote_codigo`, `operacao_nome`). `PackService.create` populates these from the lote on the server, ignoring client-derived values.
+- Where the delete is *real* and not just a phantom reinsert — `packs` referencing `alocacoes`, where an allocation genuinely gets deleted but the pack must survive as history — deferral can't help. Instead drop the FK (V8 drops `packs_alocacao_id_fkey`) and **snapshot the referenced fields onto the row** (V8: `pack.lote_id`, `operacao_id`, `lote_codigo`, `operacao_nome`). `PackService.create` populates these from the lote on the server, ignoring client-derived values. Rule of thumb: *deferral for phantom deletes, snapshot for real deletes* (see ADR-0004).
 
 ### Offline-first sync (frontend)
 - Dexie (IndexedDB) is the source of truth for the UI; reads never block on network.

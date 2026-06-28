@@ -27,6 +27,15 @@ export interface DesempenhoDia {
   totalPct: number;
 }
 
+export interface DesempenhoPeriodo {
+  inicio: string;
+  fim: string;
+  dias: DesempenhoDia[];
+  totalMeta: number;
+  totalProduzido: number;
+  totalPct: number;
+}
+
 export interface Perfil {
   operarioId: string;
   nome: string;
@@ -56,6 +65,12 @@ export const meApi = {
   },
   async hoje() {
     const { data } = await portalApi.get<DesempenhoDia>('/me/hoje');
+    return data;
+  },
+  async periodo(inicio: string, fim: string) {
+    const { data } = await portalApi.get<DesempenhoPeriodo>('/me/periodo', {
+      params: { inicio, fim },
+    });
     return data;
   },
   async changePin(currentPin: string, newPin: string) {

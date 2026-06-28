@@ -3,6 +3,25 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuid } from 'uuid';
 import { lotesRepo } from './lotesRepo';
 import type { LoteLocal, Operacao, Tamanho } from '../../types/lote';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 
 interface FormState {
   codigo: string;
@@ -118,23 +137,15 @@ export default function LoteFormPage() {
 
     setSaving(true);
     try {
-      if (isEdit && id) {
-        await lotesRepo.update(id, {
-          codigo: form.codigo.trim(),
-          nome: form.nome.trim(),
-          descricao: form.descricao.trim() || undefined,
-          operacoes: form.operacoes,
-          tamanhos: form.tamanhos,
-        });
-      } else {
-        await lotesRepo.create({
-          codigo: form.codigo.trim(),
-          nome: form.nome.trim(),
-          descricao: form.descricao.trim() || undefined,
-          operacoes: form.operacoes,
-          tamanhos: form.tamanhos,
-        });
-      }
+      const payload = {
+        codigo: form.codigo.trim(),
+        nome: form.nome.trim(),
+        descricao: form.descricao.trim() || undefined,
+        operacoes: form.operacoes,
+        tamanhos: form.tamanhos,
+      };
+      if (isEdit && id) await lotesRepo.update(id, payload);
+      else await lotesRepo.create(payload);
       navigate('/lotes');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -143,251 +154,198 @@ export default function LoteFormPage() {
     }
   };
 
-  if (loading) return <p className="text-slate-500">Carregando…</p>;
+  if (loading) return <p className="text-muted-foreground">Carregando…</p>;
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
+    <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">
-          {isEdit ? 'Editar lote' : 'Novo lote'}
-        </h2>
-        <button
-          type="button"
-          onClick={() => navigate('/lotes')}
-          className="text-sm text-slate-600 hover:underline"
-        >
+        <h2 className="text-2xl font-semibold">{isEdit ? 'Editar lote' : 'Novo lote'}</h2>
+        <Button type="button" variant="link" onClick={() => navigate('/lotes')}>
           Cancelar
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-md">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
-        <Field label="Código">
-          <input
-            autoFocus
-            value={form.codigo}
-            onChange={(e) => update('codigo', e.target.value)}
-            className="input"
-            placeholder="L2024-001"
-          />
-        </Field>
-        <Field label="Nome">
-          <input
-            value={form.nome}
-            onChange={(e) => update('nome', e.target.value)}
-            className="input"
-            placeholder="Camiseta básica branca"
-          />
-        </Field>
-        <Field label="Descrição">
-          <textarea
-            value={form.descricao}
-            onChange={(e) => update('descricao', e.target.value)}
-            className="input"
-            rows={2}
-          />
-        </Field>
-      </div>
+      <Card>
+        <CardContent>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="codigo">Código</FieldLabel>
+              <Input
+                id="codigo"
+                autoFocus
+                value={form.codigo}
+                onChange={(e) => update('codigo', e.target.value)}
+                placeholder="L2024-001"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="nome">Nome</FieldLabel>
+              <Input
+                id="nome"
+                value={form.nome}
+                onChange={(e) => update('nome', e.target.value)}
+                placeholder="Camiseta básica branca"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="descricao">Descrição</FieldLabel>
+              <Textarea
+                id="descricao"
+                value={form.descricao}
+                onChange={(e) => update('descricao', e.target.value)}
+                rows={2}
+              />
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
 
-      <Section
-        title="Operações"
-        onAdd={addOperacao}
-        empty={form.operacoes.length === 0 ? 'Nenhuma operação adicionada.' : undefined}
-        extraAction={
-          <button
-            type="button"
-            onClick={openCopy}
-            className="text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md"
-          >
-            Copiar
-          </button>
-        }
-      >
-        {form.operacoes.map((op, idx) => (
-          <div key={op.id} className="flex gap-3 items-end">
-            <Field label="Nome" className="flex-1">
-              <input
-                value={op.nome}
-                onChange={(e) => updateOperacao(idx, { nome: e.target.value })}
-                className="input"
-                placeholder="Fechar lateral"
-              />
-            </Field>
-            <Field label="Meta / hora" className="w-36">
-              <input
-                type="number"
-                min={1}
-                value={op.metaPorHora}
-                onChange={(e) =>
-                  updateOperacao(idx, { metaPorHora: Number(e.target.value) || 0 })
-                }
-                className="input"
-              />
-            </Field>
-            <button
-              type="button"
-              onClick={() => removeOperacao(idx)}
-              className="text-rose-600 text-sm pb-2"
-            >
-              Remover
-            </button>
-          </div>
-        ))}
-      </Section>
+      <Card role="region" aria-labelledby="sec-operacoes">
+        <CardHeader>
+          <CardTitle id="sec-operacoes">Operações</CardTitle>
+          <CardAction className="flex items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={openCopy}>
+              Copiar
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={addOperacao}>
+              + Adicionar
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {form.operacoes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma operação adicionada.</p>
+          ) : (
+            form.operacoes.map((op, idx) => (
+              <div key={op.id} className="flex gap-3 items-end">
+                <Field className="flex-1">
+                  <FieldLabel htmlFor={`op-nome-${op.id}`}>Nome</FieldLabel>
+                  <Input
+                    id={`op-nome-${op.id}`}
+                    value={op.nome}
+                    onChange={(e) => updateOperacao(idx, { nome: e.target.value })}
+                    placeholder="Fechar lateral"
+                  />
+                </Field>
+                <Field className="w-36">
+                  <FieldLabel htmlFor={`op-meta-${op.id}`}>Meta / hora</FieldLabel>
+                  <Input
+                    id={`op-meta-${op.id}`}
+                    type="number"
+                    min={1}
+                    value={op.metaPorHora}
+                    onChange={(e) => updateOperacao(idx, { metaPorHora: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeOperacao(idx)}>
+                  Remover
+                </Button>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
-      <Section
-        title="Tamanhos"
-        onAdd={addTamanho}
-        empty={form.tamanhos.length === 0 ? 'Nenhum tamanho adicionado.' : undefined}
-      >
-        {form.tamanhos.map((t, idx) => (
-          <div key={t.id} className="flex gap-3 items-end">
-            <Field label="Tamanho" className="w-32">
-              <input
-                value={t.tamanho}
-                onChange={(e) => updateTamanho(idx, { tamanho: e.target.value })}
-                className="input"
-                placeholder="P"
-              />
-            </Field>
-            <Field label="Quantidade" className="flex-1">
-              <input
-                type="number"
-                min={0}
-                value={t.quantidade}
-                onChange={(e) =>
-                  updateTamanho(idx, { quantidade: Number(e.target.value) || 0 })
-                }
-                className="input"
-              />
-            </Field>
-            <button
-              type="button"
-              onClick={() => removeTamanho(idx)}
-              className="text-rose-600 text-sm pb-2"
-            >
-              Remover
-            </button>
-          </div>
-        ))}
-      </Section>
+      <Card role="region" aria-labelledby="sec-tamanhos">
+        <CardHeader>
+          <CardTitle id="sec-tamanhos">Tamanhos</CardTitle>
+          <CardAction>
+            <Button type="button" variant="secondary" size="sm" onClick={addTamanho}>
+              + Adicionar
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {form.tamanhos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum tamanho adicionado.</p>
+          ) : (
+            form.tamanhos.map((t, idx) => (
+              <div key={t.id} className="flex gap-3 items-end">
+                <Field className="w-32">
+                  <FieldLabel htmlFor={`tam-rotulo-${t.id}`}>Tamanho</FieldLabel>
+                  <Input
+                    id={`tam-rotulo-${t.id}`}
+                    value={t.tamanho}
+                    onChange={(e) => updateTamanho(idx, { tamanho: e.target.value })}
+                    placeholder="P"
+                  />
+                </Field>
+                <Field className="flex-1">
+                  <FieldLabel htmlFor={`tam-qtd-${t.id}`}>Quantidade</FieldLabel>
+                  <Input
+                    id={`tam-qtd-${t.id}`}
+                    type="number"
+                    min={0}
+                    value={t.quantidade}
+                    onChange={(e) => updateTamanho(idx, { quantidade: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeTamanho(idx)}>
+                  Remover
+                </Button>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => navigate('/lotes')}
-          className="px-4 py-2 rounded-md border border-slate-300 bg-white"
-        >
+        <Button type="button" variant="outline" size="lg" onClick={() => navigate('/lotes')}>
           Cancelar
-        </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50"
-        >
+        </Button>
+        <Button type="submit" size="lg" disabled={saving}>
           {saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Criar lote'}
-        </button>
+        </Button>
       </div>
 
-      {copyOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={() => setCopyOpen(false)}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xl font-semibold">Copiar operações de outro lote</h3>
-              <button type="button" onClick={() => setCopyOpen(false)} className="text-slate-500 hover:text-slate-700">×</button>
-            </div>
-            <p className="text-sm text-slate-600 mb-3">
+      <Dialog open={copyOpen} onOpenChange={setCopyOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Copiar operações de outro lote</DialogTitle>
+            <DialogDescription>
               Selecione o lote de origem. As operações serão acrescentadas (sem substituir as atuais).
-            </p>
-            {allLotes.length === 0 ? (
-              <p className="text-sm text-slate-500 italic">Nenhum outro lote com operações cadastradas.</p>
-            ) : (
-              <ul className="space-y-2">
-                {allLotes.map((l) => (
-                  <li key={l.id}>
-                    <button
-                      type="button"
-                      onClick={() => copyOperacoesFrom(l.id)}
-                      className="w-full text-left border border-slate-200 rounded-md p-3 hover:border-slate-400"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold">{l.codigo}</span>
-                        <span className="text-xs text-slate-500">{l.operacoes.length} operação(ões)</span>
-                      </div>
-                      <p className="text-sm text-slate-600 truncate">{l.nome}</p>
-                      <p className="text-xs text-slate-500 mt-1 truncate">
-                        {l.operacoes.map((o) => o.nome).join(', ')}
-                      </p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="flex justify-end mt-4">
-              <button type="button" onClick={() => setCopyOpen(false)} className="px-3 py-2 rounded-md border border-slate-300 bg-white text-sm">
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`.input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
+            </DialogDescription>
+          </DialogHeader>
+          {allLotes.length === 0 ? (
+            <Empty className="border">
+              <EmptyTitle>Nenhum outro lote com operações.</EmptyTitle>
+              <EmptyDescription>Cadastre operações em outro lote para poder copiá-las.</EmptyDescription>
+            </Empty>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {allLotes.map((l) => (
+                <li key={l.id}>
+                  <button
+                    type="button"
+                    onClick={() => copyOperacoesFrom(l.id)}
+                    className="w-full text-left rounded-md border p-3 transition-colors hover:border-ring hover:bg-muted/50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">{l.codigo}</span>
+                      <span className="text-xs text-muted-foreground">{l.operacoes.length} operação(ões)</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">{l.nome}</p>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                      {l.operacoes.map((o) => o.nome).join(', ')}
+                    </p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCopyOpen(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
-  );
-}
-
-function Field({
-  label,
-  children,
-  className = '',
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Section({
-  title,
-  onAdd,
-  empty,
-  extraAction,
-  children,
-}: {
-  title: string;
-  onAdd: () => void;
-  empty?: string;
-  extraAction?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold">{title}</h3>
-        <div className="flex items-center gap-2">
-          {extraAction}
-          <button
-            type="button"
-            onClick={onAdd}
-            className="text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md"
-          >
-            + Adicionar
-          </button>
-        </div>
-      </div>
-      {empty ? <p className="text-sm text-slate-500">{empty}</p> : children}
-    </div>
   );
 }

@@ -2,6 +2,11 @@ import { FormEvent, useState } from 'react';
 import axios from 'axios';
 import { api } from '../../lib/axios';
 import { useAuthStore } from '../../stores/authStore';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 
 export default function SenhaPage() {
   const session = useAuthStore((s) => s.session);
@@ -53,73 +58,69 @@ export default function SenhaPage() {
   return (
     <div className="max-w-md">
       <h2 className="text-xl font-semibold mb-1">Alterar senha</h2>
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-muted-foreground mb-4">
         Conta <code>{session?.username}</code> · facção <code>{session?.tenantId}</code>
       </p>
 
-      <form onSubmit={submit} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4">
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm">
-            Senha alterada com sucesso.
-          </div>
-        )}
+      <Card>
+        <CardContent>
+          <form onSubmit={submit} className="flex flex-col gap-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="border-emerald-200 text-emerald-800 dark:border-emerald-400/30 dark:text-emerald-300">
+                <AlertDescription className="text-emerald-800 dark:text-emerald-300">
+                  Senha alterada com sucesso.
+                </AlertDescription>
+              </Alert>
+            )}
 
-        <Field label="Senha atual">
-          <input
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="input"
-            autoComplete="current-password"
-            required
-          />
-        </Field>
-        <Field label="Nova senha">
-          <input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="input"
-            autoComplete="new-password"
-            minLength={8}
-            required
-          />
-        </Field>
-        <Field label="Confirmar nova senha">
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className="input"
-            autoComplete="new-password"
-            required
-          />
-        </Field>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="currentPassword">Senha atual</FieldLabel>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="newPassword">Nova senha</FieldLabel>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="confirmPassword">Confirmar nova senha</FieldLabel>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+              </Field>
+            </FieldGroup>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-slate-900 text-white py-3 rounded-md font-medium disabled:opacity-50 hover:bg-slate-800"
-        >
-          {loading ? 'Alterando…' : 'Alterar senha'}
-        </button>
-
-        <style>{`.input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
-      </form>
+            <Button type="submit" size="lg" disabled={loading} className="w-full">
+              {loading ? 'Alterando…' : 'Alterar senha'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
   );
 }

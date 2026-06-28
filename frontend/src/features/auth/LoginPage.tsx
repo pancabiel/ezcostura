@@ -2,6 +2,17 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/authStore';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 
 interface LoginResponse {
   accessToken: string;
@@ -46,51 +57,44 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-full flex items-center justify-center p-4">
-      <form onSubmit={submit} className="bg-white border border-slate-200 rounded-lg shadow-sm w-full max-w-sm p-6 space-y-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">ezcostura</h1>
-          <p className="text-sm text-slate-500">Acesse sua facção</p>
-        </div>
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">ezcostura</CardTitle>
+          <CardDescription>Acesse sua facção</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={submit} className="flex flex-col gap-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">
-            {error}
-          </div>
-        )}
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="tenantId">Facção (tenant)</FieldLabel>
+                <Input id="tenantId" value={tenantId} onChange={(e) => setTenantId(e.target.value)} required />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="username">Usuário</FieldLabel>
+                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="password">Senha</FieldLabel>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </Field>
+            </FieldGroup>
 
-        <Field label="Facção (tenant)">
-          <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="input" required />
-        </Field>
-        <Field label="Usuário">
-          <input value={username} onChange={(e) => setUsername(e.target.value)} className="input" required />
-        </Field>
-        <Field label="Senha">
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input" required />
-        </Field>
+            <Button type="submit" size="lg" disabled={loading} className="w-full">
+              {loading ? 'Entrando…' : 'Entrar'}
+            </Button>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-slate-900 text-white py-3 rounded-md font-medium disabled:opacity-50 hover:bg-slate-800"
-        >
-          {loading ? 'Entrando…' : 'Entrar'}
-        </button>
-
-        <p className="text-xs text-slate-500 text-center">
-          Padrão da migração: usuário <code>admin</code> / senha <code>admin</code> — troque-a depois.
-        </p>
-
-        <style>{`.input { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
-      </form>
+            <p className="text-xs text-muted-foreground text-center">
+              Padrão da migração: usuário <code>admin</code> / senha <code>admin</code> — troque-a depois.
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
   );
 }

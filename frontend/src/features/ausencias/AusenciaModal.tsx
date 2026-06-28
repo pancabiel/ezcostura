@@ -2,8 +2,29 @@ import { useState } from 'react';
 import { ausenciasRepo } from './ausenciasRepo';
 import type { AusenciaLocal, TipoAusencia } from '../../types/ausencia';
 import type { OperarioLocal } from '../../types/operario';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
+  open: boolean;
   ausencia?: AusenciaLocal;
   operarios: OperarioLocal[];
   onClose: () => void;
@@ -19,7 +40,7 @@ const TIPO_LABEL: Record<TipoAusencia, string> = {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export default function AusenciaModal({ ausencia, operarios, onClose }: Props) {
+export default function AusenciaModal({ open, ausencia, operarios, onClose }: Props) {
   const isEdit = Boolean(ausencia);
   const [operarioId, setOperarioId] = useState(ausencia?.operarioId ?? operarios[0]?.id ?? '');
   const [dataInicio, setDataInicio] = useState(ausencia?.dataInicio ?? todayISO());
@@ -57,70 +78,79 @@ export default function AusenciaModal({ ausencia, operarios, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <form
-        onSubmit={submit}
-        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4"
-      >
-        <h3 className="text-xl font-semibold">{isEdit ? 'Editar ausência' : 'Nova ausência'}</h3>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>{isEdit ? 'Editar ausência' : 'Nova ausência'}</DialogTitle>
+          </DialogHeader>
 
-        {error && <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm">{error}</div>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        <Field label="Funcionário">
-          <select autoFocus value={operarioId} onChange={(e) => setOperarioId(e.target.value)} className="input">
-            <option value="">Selecione…</option>
-            {operarios.map((o) => (
-              <option key={o.id} value={o.id}>{o.nome}</option>
-            ))}
-          </select>
-        </Field>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="aus-operario">Funcionário</FieldLabel>
+              <Select value={operarioId} onValueChange={setOperarioId}>
+                <SelectTrigger id="aus-operario" aria-label="Funcionário" className="w-full">
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {operarios.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Data início">
-            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="input" />
-          </Field>
-          <Field label="Data fim">
-            <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="input" />
-          </Field>
-        </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field>
+                <FieldLabel htmlFor="aus-inicio">Data início</FieldLabel>
+                <Input id="aus-inicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="aus-fim">Data fim</FieldLabel>
+                <Input id="aus-fim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+              </Field>
+            </div>
 
-        <Field label="Tipo">
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoAusencia)} className="input">
-            {TIPOS.map((t) => (
-              <option key={t} value={t}>{TIPO_LABEL[t]}</option>
-            ))}
-          </select>
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="aus-tipo">Tipo</FieldLabel>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as TipoAusencia)}>
+                <SelectTrigger id="aus-tipo" aria-label="Tipo" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {TIPOS.map((t) => (
+                      <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
 
-        <Field label="Observação">
-          <textarea
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            rows={3}
-            className="input"
-          />
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="aus-obs">Observação</FieldLabel>
+              <Textarea id="aus-obs" value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} />
+            </Field>
+          </FieldGroup>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border border-slate-300 bg-white">
-            Cancelar
-          </button>
-          <button type="submit" disabled={saving} className="px-4 py-2 rounded-md bg-slate-900 text-white disabled:opacity-50">
-            {saving ? 'Salvando…' : 'Salvar'}
-          </button>
-        </div>
-
-        <style>{`.input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid rgb(203 213 225); border-radius: 0.375rem; background: white; }`}</style>
-      </form>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
-      {children}
-    </label>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
