@@ -96,6 +96,8 @@ This bit the project hard — see `V8` and `V9` migrations:
 - `<entity>Repo.ts` — Dexie reads/writes; what the UI imports
 - one or more `*Page.tsx` / `*Modal.tsx` components
 
+UI is built with **shadcn/ui** (`radix-nova` style, `lucide` icons — see `frontend/components.json`). Reusable primitives live in `frontend/src/components/ui/` (button, input, select, dialog, card, field, …). Compose pages from these; don't hand-roll Tailwind for things a primitive already covers. To add a new primitive use the `/shadcn` skill rather than authoring the file by hand. Note: requires React 19 (older React triggers ref warnings that fail e2e), and Radix `<Select>` needs the `selectRadix()` helper in e2e.
+
 `stores/authStore.ts` (zustand, persisted to localStorage) holds the JWT session. `stores/syncStore.ts` exposes sync phase + pending counts to `SyncStatusBadge`.
 
 ### Routes (frontend)
@@ -113,5 +115,6 @@ This bit the project hard — see `V8` and `V9` migrations:
 - Domain code is Portuguese; keep new entity/field names in Portuguese to match (`lote`, `operacao`, `tamanho`, `pack`, `alocacao`, `jornada`, `ausencia`).
 - DTOs are Java records under `<feature>/dto/`; mappers are static methods on `<Entity>Mapper`.
 - Migrations are immutable Flyway `V*__*.sql` files — add a new version, never edit a shipped one. They run against every tenant schema.
+- New UI uses shadcn/ui primitives from `src/components/ui/` (add via the `/shadcn` skill) — not raw markup or ad-hoc Tailwind components.
 - Frontend never uses `*` for CORS or wildcards; the backend will refuse to boot.
 - Don't expose Postgres on a public interface — `docker-compose.yml` deliberately binds to `127.0.0.1`.
