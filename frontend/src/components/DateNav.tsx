@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -25,8 +26,8 @@ export default function DateNav({ value, onChange, showTodayBanner }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 rounded-md border bg-card p-3">
-        <Button variant="ghost" size="lg" onClick={() => onChange(shift(value, -1))}>
-          ← Dia anterior
+        <Button variant="ghost" size="icon" aria-label="Dia anterior" onClick={() => onChange(shift(value, -1))}>
+          <ChevronLeft className="size-5" />
         </Button>
         <Input
           type="date"
@@ -35,8 +36,8 @@ export default function DateNav({ value, onChange, showTodayBanner }: Props) {
           className="w-auto"
         />
         <span className="px-2 text-foreground capitalize hidden md:inline">{formatHuman(value)}</span>
-        <Button variant="ghost" size="lg" className="ml-auto" onClick={() => onChange(shift(value, 1))}>
-          Próximo dia →
+        <Button variant="ghost" size="icon" aria-label="Próximo dia" className="ml-auto" onClick={() => onChange(shift(value, 1))}>
+          <ChevronRight className="size-5" />
         </Button>
       </div>
       {showTodayBanner && !isToday && (
