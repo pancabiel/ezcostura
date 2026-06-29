@@ -118,6 +118,19 @@ export default function AlocacaoModal({
   }, [operario, existentesRaw, jornadasRaw, diasEspeciaisRaw, alocacao, defaultHorario,
       contexto, horarioManha, horarioTarde]);
 
+  // Sugestão de lote: quando só existe um lote não finalizado, já o deixa selecionado
+  // ao abrir o modal (alocação NOVA — edição mantém o lote salvo). Roda uma única vez,
+  // depois que os lotes do Dexie carregaram.
+  const loteInicializado = useRef(false);
+  useEffect(() => {
+    if (loteInicializado.current) return;
+    if (alocacao || loteId) { loteInicializado.current = true; return; }
+    if (lotesRaw === undefined) return; // espera os lotes carregarem
+    const sel = selectableLotes(lotes);
+    if (sel.length === 1) setLoteId(sel[0].id);
+    loteInicializado.current = true;
+  }, [alocacao, loteId, lotesRaw, lotes]);
+
   const lote: LoteLocal | undefined = useMemo(
     () => lotes.find((l) => l.id === loteId),
     [lotes, loteId],

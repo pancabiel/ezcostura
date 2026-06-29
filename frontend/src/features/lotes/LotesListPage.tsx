@@ -15,9 +15,14 @@ export default function LotesListPage() {
 
   const lotes = useLiveQuery(async () => {
     const all = await getDb().lotes.toArray();
+    // Mais recentes primeiro (createdAt, com fallback em updatedAt); finalizados ao final.
+    const sortKey = (l: LoteLocal): string => l.createdAt ?? l.updatedAt;
     return all
       .filter((l) => !l.pendingDelete)
-      .sort((a, b) => a.codigo.localeCompare(b.codigo));
+      .sort((a, b) => {
+        if (a.finalizado !== b.finalizado) return a.finalizado ? 1 : -1;
+        return sortKey(b).localeCompare(sortKey(a));
+      });
   }, []);
 
   const filtered = useMemo(() => {
@@ -89,24 +94,26 @@ function LoteRow({ lote }: { lote: LoteLocal }) {
   };
 
   return (
-    <li className="flex items-center justify-between p-4">
-      <Link to={`/lotes/${lote.id}`} className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-3">
+    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <Link to={`/lotes/${lote.id}`} className="min-w-0 sm:flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="font-mono text-sm text-muted-foreground">{lote.codigo}</span>
-          <span className="font-medium truncate">{lote.nome}</span>
+          <span className="font-medium break-words">{lote.nome}</span>
           {lote.finalizado && <Badge variant="outline">finalizado</Badge>}
           <SyncBadge status={lote.syncStatus} />
         </div>
         {lote.descricao && (
-          <p className="text-sm text-muted-foreground truncate mt-1">{lote.descricao}</p>
+          <p className="text-sm text-muted-foreground break-words mt-1">{lote.descricao}</p>
         )}
       </Link>
-      <Button variant="ghost" size="sm" className="ml-4" onClick={toggleFinalizado}>
-        {lote.finalizado ? 'Reabrir' : 'Finalizar'}
-      </Button>
-      <Button variant="ghost" size="sm" className="ml-1 text-destructive" onClick={handleDelete}>
-        Remover
-      </Button>
+      <div className="flex shrink-0 items-center gap-1 sm:ml-4">
+        <Button variant="ghost" size="sm" onClick={toggleFinalizado}>
+          {lote.finalizado ? 'Reabrir' : 'Finalizar'}
+        </Button>
+        <Button variant="ghost" size="sm" className="text-destructive" onClick={handleDelete}>
+          Remover
+        </Button>
+      </div>
     </li>
   );
 }

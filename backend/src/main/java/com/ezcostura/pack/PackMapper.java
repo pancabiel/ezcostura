@@ -10,7 +10,7 @@ final class PackMapper {
             p.getId(), p.getOperarioId(), p.getData(), p.getHorario(),
             p.getAlocacaoId(), p.getLoteId(), p.getOperacaoId(),
             p.getLoteCodigo(), p.getOperacaoNome(),
-            p.getQuantidade(), p.getTamanho(), p.getRegistradoPor(), p.getCreatedAt()
+            p.getQuantidade(), p.getTamanho(), p.getTonalidade(), p.getRegistradoPor(), p.getCreatedAt()
         );
     }
 
@@ -25,6 +25,7 @@ final class PackMapper {
         target.setOperacaoNome(dto.operacaoNome());
         target.setQuantidade(dto.quantidade());
         target.setTamanho(dto.tamanho());
+        target.setTonalidade(dto.tonalidade());
         target.setRegistradoPor(dto.registradoPor());
     }
 }

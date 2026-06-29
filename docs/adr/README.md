@@ -15,6 +15,7 @@ accepted; to reverse a decision, add a new ADR that supersedes the old one.
 | 0005 | Stateless JWT with refresh-token rotation | ✅ accepted |
 | 0006 | Operário PIN/CPF auth + portal | ✅ accepted |
 | 0007 | GERENTE + SUPERVISOR roles & admin-only user management | ✅ accepted |
+| 0008 | Tonalidade as a tamanho × tonalidade matrix | ✅ accepted |
 
 ## Backlog (capture opportunistically)
 

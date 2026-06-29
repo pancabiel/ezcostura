@@ -35,6 +35,7 @@ public class LoteService {
 
     @Transactional
     public LoteDto create(LoteDto dto) {
+        validateTonalidades(dto);
         if (repository.existsByCodigo(dto.codigo())) {
             throw new DuplicateKeyException("Lote com código '" + dto.codigo() + "' já existe");
         }
@@ -51,6 +52,7 @@ public class LoteService {
 
     @Transactional
     public LoteDto update(UUID id, LoteDto dto) {
+        validateTonalidades(dto);
         Lote lote = repository.findById(id)
             .orElseThrow(() -> new LoteNotFoundException(id));
         LoteMapper.applyToEntity(dto, lote);
@@ -65,5 +67,27 @@ public class LoteService {
             throw new LoteNotFoundException(id);
         }
         repository.deleteById(id);
+    }
+
+    /**
+     * Quando o lote trabalha com tonalidades, exige ao menos uma cor e nomes únicos
+     * (case-insensitive) e não-vazios — senão o select de pack fica ambíguo. Zeros nas
+     * células são permitidos (rascunho); a validação de bean já cobre o ≥ 0.
+     */
+    private void validateTonalidades(LoteDto dto) {
+        if (!dto.temTonalidades()) return;
+        List<com.ezcostura.lote.dto.TonalidadeDto> tons = dto.tonalidades();
+        if (tons == null || tons.isEmpty()) {
+            throw new IllegalArgumentException("Informe ao menos uma tonalidade quando o lote trabalha com tonalidades.");
+        }
+        var vistos = new java.util.HashSet<String>();
+        for (var t : tons) {
+            if (t.tonalidade() == null || t.tonalidade().isBlank()) {
+                throw new IllegalArgumentException("Toda tonalidade precisa de um nome.");
+            }
+            if (!vistos.add(t.tonalidade().trim().toLowerCase())) {
+                throw new IllegalArgumentException("Tonalidade '" + t.tonalidade().trim() + "' está duplicada.");
+            }
+        }
     }
 }

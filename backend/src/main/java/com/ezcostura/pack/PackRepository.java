@@ -51,6 +51,17 @@ public interface PackRepository extends CrudRepository<Pack, UUID> {
         @Param("operacaoId") UUID operacaoId
     );
 
+    @Query(
+      "SELECT COALESCE(SUM(quantidade), 0) FROM packs " +
+      "WHERE lote_id = :loteId AND tamanho = :tamanho AND tonalidade = :tonalidade AND operacao_id = :operacaoId"
+    )
+    long sumByLoteTamanhoTonalidadeOperacao(
+        @Param("loteId") UUID loteId,
+        @Param("tamanho") String tamanho,
+        @Param("tonalidade") String tonalidade,
+        @Param("operacaoId") UUID operacaoId
+    );
+
     record ProducaoPorOperarioDia(UUID operarioId, LocalDate data, long total) {}
 
     record ProducaoPorLote(UUID loteId, long total) {}

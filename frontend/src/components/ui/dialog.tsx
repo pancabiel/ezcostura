@@ -47,14 +47,35 @@ function DialogOverlay({
   )
 }
 
+// Detecta se há um popper Radix (Select/dropdown) aberto. Usado para distinguir um
+// clique legítimo no overlay (fecha o diálogo) de um clique que apenas fecha o popper.
+const POPPER_OPEN_SELECTOR =
+  '[data-slot="select-content"], [data-radix-popper-content-wrapper], [data-radix-menu-content]'
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  // Quando um Select/dropdown está aberto dentro do diálogo, ele zera os pointer-events
+  // de tudo atrás dele (inclusive deste conteúdo). Um clique numa "zona morta" do modal
+  // cai no overlay e o Radix o interpreta como clique externo, fechando o diálogo junto.
+  // Como o popper fecha no mesmo pointerdown, ao chegar no handler do diálogo ele já saiu
+  // do DOM — então capturamos o estado no início do pointerdown (fase de captura, antes
+  // do Radix processar) e usamos esse snapshot para ignorar o fechamento.
+  const popperWasOpen = React.useRef(false)
+  React.useEffect(() => {
+    const snapshot = () => {
+      popperWasOpen.current = !!document.querySelector(POPPER_OPEN_SELECTOR)
+    }
+    document.addEventListener("pointerdown", snapshot, true)
+    return () => document.removeEventListener("pointerdown", snapshot, true)
+  }, [])
+
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -64,6 +85,13 @@ function DialogContent({
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
+        onInteractOutside={(event) => {
+          if (popperWasOpen.current) {
+            event.preventDefault()
+            return
+          }
+          onInteractOutside?.(event)
+        }}
         {...props}
       >
         {children}

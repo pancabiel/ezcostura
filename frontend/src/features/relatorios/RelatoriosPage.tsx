@@ -54,6 +54,9 @@ const fmtDayMonth = (iso: string) => {
   const [, m, d] = iso.split('-');
   return `${d}/${m}`;
 };
+// Rótulo curto para o eixo x: só o dia ("29"), que cabe nas barras estreitas
+// do mobile. O mês completo aparece no tooltip (label) e nos filtros De/Até.
+const fmtDayAxis = (iso: string) => iso.slice(8, 10);
 // Horas decimais → "5h 30m" (ex.: 5.5 → "5h 30m", 5 → "5h", 0.5 → "30m").
 const fmtHoras = (horas: number) => {
   const totalMin = Math.round(horas * 60);
@@ -138,7 +141,7 @@ function HBars({
  * Para mobile, mostra apenas 14 dias mais recentes em formato horizontal scrollável,
  * mas com altura adequada e tooltips clicáveis.
  */
-function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: string; value: number }[]; color?: string; unit?: string }) {
+function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: string; axis?: string; value: number }[]; color?: string; unit?: string }) {
   const [active, setActive] = useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
   if (data.length === 0) return <p className="text-sm text-muted-foreground">Sem dados.</p>;
@@ -167,8 +170,8 @@ function Timeline({ data, color = '#10b981', unit = '' }: { data: { label: strin
                   minHeight: d.value > 0 ? 2 : 0,
                 }}
               />
-              <span className={cn('text-[10px] truncate w-full text-center', isActive ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
-                {d.label}
+              <span className={cn('text-[10px] truncate w-full text-center tabular-nums', isActive ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                {d.axis ?? d.label}
               </span>
             </button>
           );
@@ -291,7 +294,7 @@ export default function RelatoriosPage() {
   const porDia = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of porOperarioDia) m.set(r.data, (m.get(r.data) ?? 0) + r.total);
-    const result: { label: string; value: number; date: string }[] = [];
+    const result: { label: string; axis: string; value: number; date: string }[] = [];
     const start = new Date(inicio + 'T00:00:00');
     const end = new Date(fim + 'T00:00:00');
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return result;
@@ -299,7 +302,7 @@ export default function RelatoriosPage() {
     let safety = 0;
     while (cur <= end && safety < 366) {
       const iso = cur.toISOString().slice(0, 10);
-      result.push({ label: fmtDayMonth(iso), value: m.get(iso) ?? 0, date: iso });
+      result.push({ label: fmtDayMonth(iso), axis: fmtDayAxis(iso), value: m.get(iso) ?? 0, date: iso });
       cur.setDate(cur.getDate() + 1);
       safety++;
     }
@@ -455,7 +458,7 @@ export default function RelatoriosPage() {
       if (d.meta === 0) continue;
       (m.get(d.data) ?? m.set(d.data, []).get(d.data)!).push(d.pct);
     }
-    const result: { label: string; value: number; raw: number; date: string }[] = [];
+    const result: { label: string; axis: string; value: number; raw: number; date: string }[] = [];
     const start = new Date(inicio + 'T00:00:00');
     const end = new Date(fim + 'T00:00:00');
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return result;
@@ -465,7 +468,7 @@ export default function RelatoriosPage() {
       const iso = cur.toISOString().slice(0, 10);
       const arr = m.get(iso) ?? [];
       const avgRaw = arr.length > 0 ? arr.reduce((s, x) => s + x, 0) / arr.length : 0;
-      result.push({ label: fmtDayMonth(iso), value: Math.round(avgRaw), raw: avgRaw, date: iso });
+      result.push({ label: fmtDayMonth(iso), axis: fmtDayAxis(iso), value: Math.round(avgRaw), raw: avgRaw, date: iso });
       cur.setDate(cur.getDate() + 1);
       safety++;
     }

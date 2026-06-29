@@ -50,6 +50,21 @@ export class EzcosturaDb extends Dexie {
         // Local data will be re-pulled from backend on next sync.
         // No in-place data migration is required for cached records.
       });
+    // v5: lotes ganham `temTonalidades` + matriz tamanho × tonalidade (campos não
+    // indexados). Sem mudança de índice; os lotes em cache são re-puxados do backend.
+    this.version(5)
+      .stores({
+        lotes: 'id, serverId, codigo, syncStatus, updatedAt',
+        operarios: 'id, serverId, nome, ativo, jornadaId, syncStatus, updatedAt',
+        alocacoes: 'id, serverId, operarioId, data, [operarioId+data], syncStatus, updatedAt',
+        packs: 'id, serverId, operarioId, alocacaoId, data, [operarioId+data], syncStatus, updatedAt',
+        ausencias: 'id, serverId, operarioId, dataInicio, dataFim, syncStatus, updatedAt',
+        jornadas: 'id, serverId, nome, syncStatus, updatedAt',
+        diasEspeciais: 'id, serverId, data, syncStatus, updatedAt',
+      })
+      .upgrade(async () => {
+        // Re-pulled from backend on next sync; no in-place migration needed.
+      });
   }
 }
 

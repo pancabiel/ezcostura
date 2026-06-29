@@ -12,6 +12,7 @@ actually use the word on the shop floor.
 | **operário** | A shop-floor operator who sews and registers finished work. |
 | **operação** | A single operation/step within a lote (e.g. a specific seam). |
 | **tamanho** | Size of a garment (P/M/G…); since V7 recorded on the pack. |
+| **tonalidade** | Color/shade of a garment (e.g. Azul/Verde). A lote either works with tonalidades or not (`temTonalidades` flag, V14). When it does, it carries a shared list of color names and a **tamanho × tonalidade matrix**: each tamanho holds a per-color quantity (cell, 0 allowed), and the tamanho total is the sum of its cells. Recorded on the pack; the per-cell quantity is the per-operação stock limit. |
 | **pack** | A registered bundle of finished pieces for a given lote operation + size. The core production record. |
 | **alocação** | An allocation: assigning an operário to work on something for a given day. |
 | **jornada** | A work-shift schedule (hours/pauses), can have weekday overrides. |

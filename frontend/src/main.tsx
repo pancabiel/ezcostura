@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { ConfirmProvider } from './components/ConfirmDialog';
+import { Toaster } from './components/ui/sonner';
 import { startSyncService } from './services/syncService';
 import './index.css';
 
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ConfirmProvider>
         <App />
+        <Toaster richColors position="top-center" />
       </ConfirmProvider>
     </BrowserRouter>
   </React.StrictMode>,

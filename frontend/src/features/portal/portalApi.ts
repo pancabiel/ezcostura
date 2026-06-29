@@ -53,6 +53,7 @@ export interface MeuPack {
   operacaoNome: string | null;
   loteCodigo: string | null;
   tamanho: string;
+  tonalidade: string | null;
   quantidade: number;
 }
 

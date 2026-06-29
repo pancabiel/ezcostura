@@ -3,6 +3,8 @@ package com.ezcostura.lote;
 import com.ezcostura.lote.dto.LoteDto;
 import com.ezcostura.lote.dto.OperacaoDto;
 import com.ezcostura.lote.dto.TamanhoDto;
+import com.ezcostura.lote.dto.TamanhoTonalidadeDto;
+import com.ezcostura.lote.dto.TonalidadeDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +18,14 @@ final class LoteMapper {
             .map(o -> new OperacaoDto(o.getId(), o.getNome(), o.getMetaPorHora()))
             .toList();
         List<TamanhoDto> tams = lote.getTamanhos().stream()
-            .map(t -> new TamanhoDto(t.getId(), t.getTamanho(), t.getQuantidade()))
+            .map(t -> new TamanhoDto(
+                t.getId(), t.getTamanho(), t.getQuantidade(),
+                t.getTonalidades().stream()
+                    .map(c -> new TamanhoTonalidadeDto(c.getId(), c.getTonalidade(), c.getQuantidade()))
+                    .toList()))
+            .toList();
+        List<TonalidadeDto> tons = lote.getTonalidades().stream()
+            .map(t -> new TonalidadeDto(t.getId(), t.getTonalidade()))
             .toList();
         return new LoteDto(
             lote.getId(),
@@ -24,8 +33,10 @@ final class LoteMapper {
             lote.getNome(),
             lote.getDescricao(),
             lote.isFinalizado(),
+            lote.isTemTonalidades(),
             ops,
             tams,
+            tons,
             lote.getCreatedAt(),
             lote.getUpdatedAt()
         );
@@ -36,6 +47,7 @@ final class LoteMapper {
         target.setNome(dto.nome());
         target.setDescricao(dto.descricao());
         target.setFinalizado(dto.finalizado());
+        target.setTemTonalidades(dto.temTonalidades());
 
         target.getOperacoes().clear();
         for (OperacaoDto op : dto.operacoes()) {
@@ -46,7 +58,22 @@ final class LoteMapper {
         target.getTamanhos().clear();
         for (TamanhoDto t : dto.tamanhos()) {
             UUID id = t.id() != null ? t.id() : UUID.randomUUID();
-            target.getTamanhos().add(new Tamanho(id, t.tamanho(), t.quantidade()));
+            Tamanho tamanho = new Tamanho(id, t.tamanho(), t.quantidade());
+            if (t.tonalidades() != null) {
+                for (TamanhoTonalidadeDto c : t.tonalidades()) {
+                    UUID cid = c.id() != null ? c.id() : UUID.randomUUID();
+                    tamanho.getTonalidades().add(new TamanhoTonalidade(cid, c.tonalidade(), c.quantidade()));
+                }
+            }
+            target.getTamanhos().add(tamanho);
+        }
+
+        target.getTonalidades().clear();
+        if (dto.tonalidades() != null) {
+            for (TonalidadeDto t : dto.tonalidades()) {
+                UUID id = t.id() != null ? t.id() : UUID.randomUUID();
+                target.getTonalidades().add(new Tonalidade(id, t.tonalidade()));
+            }
         }
     }
 }

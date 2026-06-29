@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuid } from 'uuid';
+import { toast } from 'sonner';
 import { lotesRepo } from './lotesRepo';
-import type { LoteLocal, Operacao, Tamanho } from '../../types/lote';
+import type { LoteLocal, Operacao, Tamanho, TamanhoTonalidade, Tonalidade } from '../../types/lote';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Field,
   FieldGroup,
@@ -29,6 +31,9 @@ interface FormState {
   descricao: string;
   operacoes: Operacao[];
   tamanhos: Tamanho[];
+  temTonalidades: boolean;
+  /** Nomes de tonalidade compartilhados (colunas da matriz), index-alinhados às células. */
+  tonalidades: Tonalidade[];
 }
 
 const empty: FormState = {
@@ -37,7 +42,21 @@ const empty: FormState = {
   descricao: '',
   operacoes: [],
   tamanhos: [],
+  temTonalidades: false,
+  tonalidades: [],
 };
+
+/** Soma das células de um tamanho (= total quando o lote tem tonalidades). */
+const sumCells = (t: Tamanho): number =>
+  t.tonalidades.reduce((s, c) => s + (c.quantidade || 0), 0);
+
+/** Realinha as células de um tamanho à lista de nomes, preservando quantidades e preenchendo faltantes com 0. */
+function alignCells(cells: TamanhoTonalidade[], nomes: Tonalidade[]): TamanhoTonalidade[] {
+  return nomes.map((n) => {
+    const existing = cells.find((c) => c.tonalidade === n.tonalidade);
+    return existing ?? { id: uuid(), tonalidade: n.tonalidade, quantidade: 0 };
+  });
+}
 
 export default function LoteFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,12 +81,19 @@ export default function LoteFormPage() {
         setLoading(false);
         return;
       }
+      const tonalidades = lote.tonalidades ?? [];
+      const tamanhos = (lote.tamanhos ?? []).map((t) => ({
+        ...t,
+        tonalidades: lote.temTonalidades ? alignCells(t.tonalidades ?? [], tonalidades) : (t.tonalidades ?? []),
+      }));
       setForm({
         codigo: lote.codigo,
         nome: lote.nome,
         descricao: lote.descricao ?? '',
         operacoes: lote.operacoes,
-        tamanhos: lote.tamanhos,
+        tamanhos,
+        temTonalidades: lote.temTonalidades ?? false,
+        tonalidades,
       });
       setLoading(false);
     })();
@@ -108,8 +134,17 @@ export default function LoteFormPage() {
   const removeOperacao = (idx: number) =>
     update('operacoes', form.operacoes.filter((_, i) => i !== idx));
 
+  // ── Tamanhos ──────────────────────────────────────────────────────────────
   const addTamanho = () =>
-    update('tamanhos', [...form.tamanhos, { id: uuid(), tamanho: '', quantidade: 0 }]);
+    setForm((prev) => {
+      const cells = prev.temTonalidades
+        ? prev.tonalidades.map((n) => ({ id: uuid(), tonalidade: n.tonalidade, quantidade: 0 }))
+        : [];
+      return {
+        ...prev,
+        tamanhos: [...prev.tamanhos, { id: uuid(), tamanho: '', quantidade: 0, tonalidades: cells }],
+      };
+    });
   const updateTamanho = (idx: number, patch: Partial<Tamanho>) =>
     update(
       'tamanhos',
@@ -118,37 +153,138 @@ export default function LoteFormPage() {
   const removeTamanho = (idx: number) =>
     update('tamanhos', form.tamanhos.filter((_, i) => i !== idx));
 
+  /** Atualiza a quantidade de uma célula (tamanho × tonalidade). */
+  const updateCelula = (tamIdx: number, tonIdx: number, quantidade: number) =>
+    update(
+      'tamanhos',
+      form.tamanhos.map((t, ti) =>
+        ti !== tamIdx
+          ? t
+          : { ...t, tonalidades: t.tonalidades.map((c, ci) => (ci === tonIdx ? { ...c, quantidade } : c)) },
+      ),
+    );
+
+  // ── Tonalidades (nomes compartilhados) ──────────────────────────────────────
+  const addTonalidade = () =>
+    setForm((prev) => ({
+      ...prev,
+      tonalidades: [...prev.tonalidades, { id: uuid(), tonalidade: '' }],
+      tamanhos: prev.tamanhos.map((t) => ({
+        ...t,
+        tonalidades: [...t.tonalidades, { id: uuid(), tonalidade: '', quantidade: 0 }],
+      })),
+    }));
+  const updateTonalidadeNome = (idx: number, nome: string) =>
+    setForm((prev) => ({
+      ...prev,
+      tonalidades: prev.tonalidades.map((t, i) => (i === idx ? { ...t, tonalidade: nome } : t)),
+      tamanhos: prev.tamanhos.map((t) => ({
+        ...t,
+        tonalidades: t.tonalidades.map((c, i) => (i === idx ? { ...c, tonalidade: nome } : c)),
+      })),
+    }));
+  const removeTonalidade = (idx: number) =>
+    setForm((prev) => ({
+      ...prev,
+      tonalidades: prev.tonalidades.filter((_, i) => i !== idx),
+      tamanhos: prev.tamanhos.map((t) => ({
+        ...t,
+        tonalidades: t.tonalidades.filter((_, i) => i !== idx),
+      })),
+    }));
+
+  /** Liga/desliga o trabalho com tonalidades no lote. */
+  const setTemTonalidades = (on: boolean) =>
+    setForm((prev) => {
+      if (on) {
+        if (prev.tonalidades.length > 0) {
+          // Cores já guardadas (alternou de novo): realinha as células às colunas.
+          return {
+            ...prev,
+            temTonalidades: true,
+            tamanhos: prev.tamanhos.map((t) => ({ ...t, tonalidades: alignCells(t.tonalidades, prev.tonalidades) })),
+          };
+        }
+        if (prev.tamanhos.length > 0) {
+          // Já há tamanhos com total: cria "Sem tonalidade" herdando o total de cada um.
+          const nome = 'Sem tonalidade';
+          return {
+            ...prev,
+            temTonalidades: true,
+            tonalidades: [{ id: uuid(), tonalidade: nome }],
+            tamanhos: prev.tamanhos.map((t) => ({
+              ...t,
+              tonalidades: [{ id: uuid(), tonalidade: nome, quantidade: t.quantidade }],
+            })),
+          };
+        }
+        // Sem tamanhos e sem cores: só liga; o usuário adiciona as cores.
+        return { ...prev, temTonalidades: true };
+      }
+      // Desligou: total do tamanho passa a ser a soma; guarda nomes/células escondidos.
+      return {
+        ...prev,
+        temTonalidades: false,
+        tamanhos: prev.tamanhos.map((t) => ({ ...t, quantidade: sumCells(t) })),
+      };
+    });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     if (!form.codigo.trim() || !form.nome.trim()) {
-      setError('Código e nome são obrigatórios.');
+      toast.error('Código e nome são obrigatórios.');
       return;
     }
     if (form.operacoes.some((o) => !o.nome.trim() || o.metaPorHora <= 0)) {
-      setError('Toda operação precisa de nome e meta por hora > 0.');
+      toast.error('Toda operação precisa de nome e meta por hora > 0.');
       return;
     }
-    if (form.tamanhos.some((t) => !t.tamanho.trim() || t.quantidade < 0)) {
-      setError('Todo tamanho precisa de rótulo e quantidade ≥ 0.');
+    if (form.tamanhos.some((t) => !t.tamanho.trim())) {
+      toast.error('Todo tamanho precisa de um rótulo.');
       return;
+    }
+    if (!form.temTonalidades && form.tamanhos.some((t) => t.quantidade < 0)) {
+      toast.error('Todo tamanho precisa de quantidade ≥ 0.');
+      return;
+    }
+    if (form.temTonalidades) {
+      if (form.tonalidades.length === 0) {
+        toast.error('Adicione ao menos uma tonalidade ou desligue "Trabalha com tonalidades".');
+        return;
+      }
+      if (form.tonalidades.some((t) => !t.tonalidade.trim())) {
+        toast.error('Toda tonalidade precisa de um nome.');
+        return;
+      }
+      const nomes = form.tonalidades.map((t) => t.tonalidade.trim().toLowerCase());
+      if (new Set(nomes).size !== nomes.length) {
+        toast.error('Tonalidades não podem ter nomes repetidos.');
+        return;
+      }
     }
 
     setSaving(true);
     try {
+      // Sem tonalidades, não persistimos a matriz: descartamos os nomes/células
+      // (que podem estar em branco) para não disparar a validação @NotBlank no backend.
+      const tamanhos = form.tamanhos.map((t) =>
+        form.temTonalidades ? { ...t, quantidade: sumCells(t) } : { ...t, tonalidades: [] },
+      );
       const payload = {
         codigo: form.codigo.trim(),
         nome: form.nome.trim(),
         descricao: form.descricao.trim() || undefined,
+        temTonalidades: form.temTonalidades,
         operacoes: form.operacoes,
-        tamanhos: form.tamanhos,
+        tamanhos,
+        tonalidades: form.temTonalidades ? form.tonalidades : [],
       };
       if (isEdit && id) await lotesRepo.update(id, payload);
       else await lotesRepo.create(payload);
       navigate('/lotes');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -239,7 +375,7 @@ export default function LoteFormPage() {
                     id={`op-meta-${op.id}`}
                     type="number"
                     min={1}
-                    value={op.metaPorHora}
+                    value={op.metaPorHora || ''}
                     onChange={(e) => updateOperacao(idx, { metaPorHora: Number(e.target.value) || 0 })}
                   />
                 </Field>
@@ -250,6 +386,53 @@ export default function LoteFormPage() {
             ))
           )}
         </CardContent>
+      </Card>
+
+      <Card role="region" aria-labelledby="sec-tonalidades">
+        <CardHeader>
+          <CardTitle id="sec-tonalidades">Tonalidades</CardTitle>
+          <CardAction className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Trabalha com tonalidades</span>
+            <Switch
+              aria-label="Trabalha com tonalidades"
+              checked={form.temTonalidades}
+              onCheckedChange={setTemTonalidades}
+            />
+          </CardAction>
+        </CardHeader>
+        {form.temTonalidades && (
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              As cores valem para todos os tamanhos. A quantidade de cada cor é informada por tamanho abaixo.
+            </p>
+            {form.tonalidades.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma tonalidade adicionada.</p>
+            ) : (
+              form.tonalidades.map((t, idx) => (
+                <div key={t.id} className="flex gap-3 items-end">
+                  <Field className="flex-1">
+                    <FieldLabel htmlFor={`ton-nome-${t.id}`}>Tonalidade</FieldLabel>
+                    <Input
+                      id={`ton-nome-${t.id}`}
+                      value={t.tonalidade}
+                      onChange={(e) => updateTonalidadeNome(idx, e.target.value)}
+                      placeholder="Azul"
+                      maxLength={32}
+                    />
+                  </Field>
+                  <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeTonalidade(idx)}>
+                    Remover
+                  </Button>
+                </div>
+              ))
+            )}
+            <div>
+              <Button type="button" variant="secondary" size="sm" onClick={addTonalidade}>
+                + Adicionar tonalidade
+              </Button>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       <Card role="region" aria-labelledby="sec-tamanhos">
@@ -264,6 +447,45 @@ export default function LoteFormPage() {
         <CardContent className="flex flex-col gap-4">
           {form.tamanhos.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum tamanho adicionado.</p>
+          ) : form.temTonalidades ? (
+            form.tamanhos.map((t, idx) => (
+              <div key={t.id} className="rounded-lg border p-3 flex flex-col gap-3">
+                <div className="flex gap-3 items-end">
+                  <Field className="w-32">
+                    <FieldLabel htmlFor={`tam-rotulo-${t.id}`}>Tamanho</FieldLabel>
+                    <Input
+                      id={`tam-rotulo-${t.id}`}
+                      value={t.tamanho}
+                      onChange={(e) => updateTamanho(idx, { tamanho: e.target.value })}
+                      placeholder="P"
+                    />
+                  </Field>
+                  <div className="flex-1 text-sm text-muted-foreground">
+                    Total: <span className="font-mono font-semibold text-foreground">{sumCells(t)}</span>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeTamanho(idx)}>
+                    Remover
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {t.tonalidades.map((c, ci) => (
+                    <Field key={c.id} className="w-28">
+                      <FieldLabel htmlFor={`cel-${t.id}-${c.id}`}>
+                        {form.tonalidades[ci]?.tonalidade?.trim() || `Cor ${ci + 1}`}
+                      </FieldLabel>
+                      <Input
+                        id={`cel-${t.id}-${c.id}`}
+                        aria-label={form.tonalidades[ci]?.tonalidade?.trim() || `Cor ${ci + 1}`}
+                        type="number"
+                        min={0}
+                        value={c.quantidade || ''}
+                        onChange={(e) => updateCelula(idx, ci, Math.max(0, Number(e.target.value) || 0))}
+                      />
+                    </Field>
+                  ))}
+                </div>
+              </div>
+            ))
           ) : (
             form.tamanhos.map((t, idx) => (
               <div key={t.id} className="flex gap-3 items-end">
@@ -282,7 +504,7 @@ export default function LoteFormPage() {
                     id={`tam-qtd-${t.id}`}
                     type="number"
                     min={0}
-                    value={t.quantidade}
+                    value={t.quantidade || ''}
                     onChange={(e) => updateTamanho(idx, { quantidade: Number(e.target.value) || 0 })}
                   />
                 </Field>

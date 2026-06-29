@@ -97,6 +97,7 @@ public class DesempenhoService {
                 p.getOperacaoNome(),
                 p.getLoteCodigo(),
                 p.getTamanho(),
+                p.getTonalidade(),
                 p.getQuantidade()
             ))
             .toList();

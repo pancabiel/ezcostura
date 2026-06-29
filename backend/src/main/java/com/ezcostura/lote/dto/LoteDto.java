@@ -14,8 +14,10 @@ public record LoteDto(
     @NotBlank String nome,
     String descricao,
     boolean finalizado,
+    boolean temTonalidades,
     @NotNull @Valid List<OperacaoDto> operacoes,
     @NotNull @Valid List<TamanhoDto> tamanhos,
+    @Valid List<TonalidadeDto> tonalidades,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt
 ) {}

@@ -54,11 +54,14 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
   const [operacaoId, setOperacaoId] = useState<string>(vigente?.operacaoId ?? '');
   const [tamanho, setTamanho] = useState<string>('');
   const [tamanhoTouched, setTamanhoTouched] = useState(false);
+  const [tonalidade, setTonalidade] = useState<string>('');
+  const [tonalidadeTouched, setTonalidadeTouched] = useState(false);
   const [quantidade, setQuantidade] = useState<number>(0);
   const [quantidadeTouched, setQuantidadeTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [jaProduzido, setJaProduzido] = useState<number>(0);
+  const [jaProduzidoTon, setJaProduzidoTon] = useState<number>(0);
   const session = getSession();
 
   const jornadas = useLiveQuery(() => getDb().jornadas.toArray(), []) ?? [];
@@ -73,6 +76,16 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
   }, [operario, operarioId, data, jornadas, diasEspeciais]);
 
   const selectedLote = useMemo(() => lotes.find((l) => l.id === loteId), [lotes, loteId]);
+  const temTonalidades = selectedLote?.temTonalidades ?? false;
+  const tamanhoObj = useMemo(
+    () => selectedLote?.tamanhos.find((t) => t.tamanho === tamanho),
+    [selectedLote, tamanho],
+  );
+  // Cores oferecidas para o tamanho escolhido: só as que têm peças (> 0) naquele tamanho.
+  const tonalidadesDoTamanho = useMemo(
+    () => (tamanhoObj?.tonalidades ?? []).filter((c) => c.quantidade > 0),
+    [tamanhoObj],
+  );
 
   // Lotes oferecidos no select: só os ativos, do mais recente ao mais antigo.
   // Mantém o lote já selecionado visível mesmo se finalizado (pré-seleção da alocação vigente).
@@ -122,6 +135,35 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     return () => { cancelled = true; };
   }, [selectedLote, operacaoId, tamanhoTouched]);
 
+  // Tonalidade depende do tamanho: limpa a seleção se a cor não existe (ou zerou) no tamanho.
+  useEffect(() => {
+    if (!temTonalidades) {
+      if (tonalidade) setTonalidade('');
+      return;
+    }
+    if (tonalidade && !tonalidadesDoTamanho.some((c) => c.tonalidade === tonalidade)) {
+      setTonalidade('');
+    }
+  }, [temTonalidades, tonalidadesDoTamanho, tonalidade]);
+
+  // Auto-preenche tonalidade com o último pack do lote+operação+tamanho (só cores disponíveis no tamanho).
+  useEffect(() => {
+    if (!selectedLote || !operacaoId || !tamanho || tonalidadeTouched || !temTonalidades) return;
+    let cancelled = false;
+    void (async () => {
+      const allPacks = (await getDb().packs.toArray()).filter(
+        (p) => !p.pendingDelete && p.loteId === selectedLote.id && p.operacaoId === operacaoId && p.tamanho === tamanho,
+      );
+      if (cancelled || allPacks.length === 0) return;
+      allPacks.sort((a, b) => b.horario.localeCompare(a.horario));
+      const lastTon = allPacks[0].tonalidade;
+      if (lastTon && tonalidadesDoTamanho.some((c) => c.tonalidade === lastTon)) {
+        setTonalidade(lastTon);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLote, operacaoId, tamanho, tonalidadeTouched, temTonalidades, tonalidadesDoTamanho]);
+
   // Auto-preenche quantidade com o último pack do lote.
   useEffect(() => {
     if (!selectedLote || quantidadeTouched) return;
@@ -155,14 +197,41 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
     return () => { cancelled = true; };
   }, [selectedLote, operacaoId, tamanho]);
 
+  // Trava do tamanho: só quando o lote NÃO tem tonalidades (senão a trava é por célula).
   const limite = useMemo(() => {
-    if (!selectedLote || !tamanho) return null;
-    const t = selectedLote.tamanhos.find((x) => x.tamanho === tamanho);
-    return t?.quantidade ?? null;
-  }, [selectedLote, tamanho]);
+    if (temTonalidades || !tamanhoObj) return null;
+    return tamanhoObj.quantidade;
+  }, [temTonalidades, tamanhoObj]);
 
   const restante = limite != null ? Math.max(0, limite - jaProduzido) : null;
   const ultrapassaria = limite != null && quantidade > 0 && jaProduzido + quantidade > limite;
+
+  // Soma já produzida para a célula lote+operação+tamanho+tonalidade.
+  useEffect(() => {
+    if (!selectedLote || !operacaoId || !tamanho || !tonalidade) { setJaProduzidoTon(0); return; }
+    let cancelled = false;
+    void (async () => {
+      const total = (await getDb().packs.toArray()).reduce((s, p) => {
+        if (p.pendingDelete) return s;
+        if (p.loteId !== selectedLote.id) return s;
+        if (p.operacaoId !== operacaoId) return s;
+        if (p.tamanho !== tamanho) return s;
+        if (p.tonalidade !== tonalidade) return s;
+        return s + p.quantidade;
+      }, 0);
+      if (!cancelled) setJaProduzidoTon(total);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLote, operacaoId, tamanho, tonalidade]);
+
+  // Trava da célula (tamanho × tonalidade), só quando o lote tem tonalidades.
+  const limiteTon = useMemo(() => {
+    if (!temTonalidades || !tonalidade || !tamanhoObj) return null;
+    return tamanhoObj.tonalidades.find((c) => c.tonalidade === tonalidade)?.quantidade ?? null;
+  }, [temTonalidades, tonalidade, tamanhoObj]);
+
+  const restanteTon = limiteTon != null ? Math.max(0, limiteTon - jaProduzidoTon) : null;
+  const ultrapassariaTon = limiteTon != null && quantidade > 0 && jaProduzidoTon + quantidade > limiteTon;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,12 +243,20 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
       setError('Selecione um tamanho.');
       return;
     }
+    if (temTonalidades && !tonalidade) {
+      setError('Selecione uma tonalidade.');
+      return;
+    }
     if (!quantidade || quantidade <= 0) {
       setError('Quantidade deve ser maior que zero.');
       return;
     }
     if (ultrapassaria && limite != null) {
       setError(`Estouro do limite do lote: tamanho "${tamanho}" tem ${jaProduzido} de ${limite} peças produzidas. Resta(m) ${limite - jaProduzido}.`);
+      return;
+    }
+    if (ultrapassariaTon && limiteTon != null) {
+      setError(`Estouro do limite do lote: tonalidade "${tonalidade}" tem ${jaProduzidoTon} de ${limiteTon} peças produzidas. Resta(m) ${limiteTon - jaProduzidoTon}.`);
       return;
     }
 
@@ -216,6 +293,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
         operacaoNome: operacao.nome,
         quantidade,
         tamanho,
+        tonalidade: temTonalidades ? tonalidade : undefined,
         registradoPor: session?.userId,
       });
       onClose();
@@ -245,7 +323,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
               <FieldLabel htmlFor="pack-lote">Lote</FieldLabel>
               <Select
                 value={loteId}
-                onValueChange={(v) => { setLoteId(v); setOperacaoId(''); setTamanhoTouched(false); }}
+                onValueChange={(v) => { setLoteId(v); setOperacaoId(''); setTamanhoTouched(false); setTonalidadeTouched(false); }}
               >
                 <SelectTrigger id="pack-lote" aria-label="Lote" className="w-full">
                   <SelectValue placeholder="Selecione…" />
@@ -264,7 +342,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
               <FieldLabel htmlFor="pack-operacao">Operação</FieldLabel>
               <Select
                 value={operacaoId}
-                onValueChange={(v) => { setOperacaoId(v); setTamanhoTouched(false); }}
+                onValueChange={(v) => { setOperacaoId(v); setTamanhoTouched(false); setTonalidadeTouched(false); }}
                 disabled={!selectedLote}
               >
                 <SelectTrigger id="pack-operacao" aria-label="Operação" className="w-full">
@@ -317,6 +395,39 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
               )}
             </Field>
 
+            {temTonalidades && (
+              <Field>
+                <FieldLabel htmlFor="pack-tonalidade">Tonalidade</FieldLabel>
+                <Select
+                  value={tonalidade}
+                  onValueChange={(v) => { setTonalidade(v); setTonalidadeTouched(true); }}
+                  disabled={!selectedLote || !tamanho}
+                >
+                  <SelectTrigger id="pack-tonalidade" aria-label="Tonalidade" className="w-full">
+                    <SelectValue placeholder={tamanho ? 'Selecione…' : 'Escolha o tamanho primeiro'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {tonalidadesDoTamanho.map((c) => (
+                        <SelectItem key={c.id} value={c.tonalidade}>
+                          {c.tonalidade} ({c.quantidade} pçs no tamanho)
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {tamanho && tonalidadesDoTamanho.length === 0 && (
+                  <FieldDescription>Nenhuma tonalidade com peças neste tamanho.</FieldDescription>
+                )}
+                {limiteTon != null && (
+                  <FieldDescription className={cn(restanteTon === 0 && 'text-destructive')}>
+                    Já produzido: <span className="font-mono">{jaProduzidoTon}</span> de <span className="font-mono">{limiteTon}</span>
+                    {restanteTon != null && <> · resta(m) <span className="font-mono">{restanteTon}</span></>}
+                  </FieldDescription>
+                )}
+              </Field>
+            )}
+
             <Field>
               <FieldLabel htmlFor="pack-qtd">Quantidade de peças</FieldLabel>
               <Input
@@ -331,12 +442,17 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
                   setQuantidadeTouched(true);
                 }}
                 onFocus={(e) => e.currentTarget.select()}
-                aria-invalid={ultrapassaria}
-                className={cn('h-auto py-4 text-center font-mono text-3xl', ultrapassaria && 'bg-destructive/10')}
+                aria-invalid={ultrapassaria || ultrapassariaTon}
+                className={cn('h-auto py-4 text-center font-mono text-3xl', (ultrapassaria || ultrapassariaTon) && 'bg-destructive/10')}
               />
               {ultrapassaria && (
                 <FieldDescription className="text-destructive">
-                  Ultrapassa o limite. Máximo permitido agora: {Math.max(0, (limite ?? 0) - jaProduzido)}
+                  Ultrapassa o limite do tamanho. Máximo permitido agora: {Math.max(0, (limite ?? 0) - jaProduzido)}
+                </FieldDescription>
+              )}
+              {ultrapassariaTon && (
+                <FieldDescription className="text-destructive">
+                  Ultrapassa o limite da tonalidade. Máximo permitido agora: {Math.max(0, (limiteTon ?? 0) - jaProduzidoTon)}
                 </FieldDescription>
               )}
             </Field>

@@ -22,6 +22,7 @@ public class Lote implements Persistable<UUID> {
     private String nome;
     private String descricao;
     private boolean finalizado;
+    private boolean temTonalidades;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -30,6 +31,9 @@ public class Lote implements Persistable<UUID> {
 
     @MappedCollection(idColumn = "lote_id", keyColumn = "ordem")
     private List<Tamanho> tamanhos = new ArrayList<>();
+
+    @MappedCollection(idColumn = "lote_id", keyColumn = "ordem")
+    private List<Tonalidade> tonalidades = new ArrayList<>();
 
     @Override
     public UUID getId() { return id; }
@@ -51,6 +55,9 @@ public class Lote implements Persistable<UUID> {
     public boolean isFinalizado() { return finalizado; }
     public void setFinalizado(boolean finalizado) { this.finalizado = finalizado; }
 
+    public boolean isTemTonalidades() { return temTonalidades; }
+    public void setTemTonalidades(boolean temTonalidades) { this.temTonalidades = temTonalidades; }
+
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -62,4 +69,7 @@ public class Lote implements Persistable<UUID> {
 
     public List<Tamanho> getTamanhos() { return tamanhos; }
     public void setTamanhos(List<Tamanho> tamanhos) { this.tamanhos = tamanhos; }
+
+    public List<Tonalidade> getTonalidades() { return tonalidades; }
+    public void setTonalidades(List<Tonalidade> tonalidades) { this.tonalidades = tonalidades; }
 }

@@ -16,5 +16,6 @@ public record MeuPackDto(
     String operacaoNome,
     String loteCodigo,
     String tamanho,
+    String tonalidade,
     int quantidade
 ) {}

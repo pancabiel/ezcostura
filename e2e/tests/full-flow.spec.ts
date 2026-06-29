@@ -34,6 +34,7 @@ const META_COSTURA_POR_HORA = 60;
 const META_ACABAMENTO_POR_HORA = 40;
 const QTD_PACK = 30;
 const TAMANHO_PACK = 'M';
+const TONALIDADE_PACK = 'Azul';
 
 // Pick a "future-but-soon" date for the dia especial so it doesn't collide
 // with today's test data. Day-after-tomorrow is safe.
@@ -158,14 +159,22 @@ test('full production flow: jornada → operário → dia especial → lote → 
     await safeFill(opRows.nth(1).getByLabel('Nome'), operacaoAcabamento);
     await safeFill(opRows.nth(1).getByLabel('Meta / hora'), String(META_ACABAMENTO_POR_HORA));
 
-    // Add three tamanhos.
+    // Liga o trabalho com tonalidades e define as cores compartilhadas Azul/Verde.
+    const tonalidadesSection = page.getByRole('region', { name: 'Tonalidades' });
+    await tonalidadesSection.getByRole('switch', { name: 'Trabalha com tonalidades' }).click();
+    for (const ton of ['Azul', 'Verde'] as const) {
+      await tonalidadesSection.getByRole('button', { name: '+ Adicionar tonalidade' }).click();
+      await safeFill(tonalidadesSection.getByLabel('Tonalidade').last(), ton);
+    }
+
+    // Add three tamanhos; com tonalidades ligadas cada tamanho ganha as células Azul/Verde.
+    // A quantidade vai na coluna Azul (Verde fica 0); o total do tamanho é a soma.
     const tamanhosSection = page.getByRole('region', { name: 'Tamanhos' });
     for (const [tam, qtd] of [['P', 50], ['M', 50], ['G', 30]] as const) {
       await tamanhosSection.getByRole('button', { name: '+ Adicionar' }).click();
-      const tamRows = tamanhosSection.locator('div.flex.gap-3');
-      const last = tamRows.last();
+      const last = tamanhosSection.locator('div.rounded-lg').last();
       await safeFill(last.getByLabel('Tamanho'), tam);
-      await safeFill(last.getByLabel('Quantidade'), String(qtd));
+      await safeFill(last.getByLabel('Azul'), String(qtd));
     }
 
     await page.getByRole('button', { name: 'Criar lote' }).click();
@@ -206,6 +215,12 @@ test('full production flow: jornada → operário → dia especial → lote → 
     expect(lote, 'lote not found via API').toBeTruthy();
     expect(lote.operacoes).toHaveLength(2);
     expect(lote.tamanhos).toHaveLength(3);
+    expect(lote.temTonalidades).toBe(true);
+    expect(lote.tonalidades).toHaveLength(2);
+    // Matriz: o tamanho M tem a célula Azul = 50 (Verde = 0).
+    const tamM = lote.tamanhos.find((t: any) => t.tamanho === TAMANHO_PACK);
+    const celAzul = tamM.tonalidades.find((c: any) => c.tonalidade === TONALIDADE_PACK);
+    expect(celAzul?.quantidade).toBe(50);
 
     const diasRes = await api.get('/api/dias-especiais', { headers });
     const dias = await diasRes.json();
@@ -229,6 +244,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     await selectRadix(page, modal.getByRole('combobox', { name: 'Lote' }), `${loteCodigo} — ${loteNome}`);
     await selectRadix(page, modal.getByRole('combobox', { name: 'Operação' }), operacaoCostura);
     await selectRadix(page, modal.getByRole('combobox', { name: 'Tamanho' }), new RegExp(`^${TAMANHO_PACK}\\b`));
+    await selectRadix(page, modal.getByRole('combobox', { name: 'Tonalidade' }), new RegExp(`^${TONALIDADE_PACK}\\b`));
     await safeFill(modal.getByLabel('Quantidade de peças'), String(QTD_PACK));
 
     await modal.getByRole('button', { name: 'Registrar' }).click();
@@ -253,6 +269,7 @@ test('full production flow: jornada → operário → dia especial → lote → 
     expect(total).toBe(QTD_PACK);
     expect(ours[0].operacaoNome).toBe(operacaoCostura);
     expect(ours[0].tamanho).toBe(TAMANHO_PACK);
+    expect(ours[0].tonalidade).toBe(TONALIDADE_PACK);
 
     // And there must be a matching alocação (auto-created by PackModal).
     const alocsRes = await api.get(`/api/alocacoes?data=${data}`, { headers });

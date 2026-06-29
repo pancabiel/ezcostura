@@ -215,7 +215,7 @@ export default function FacilitadorPage() {
                                 {' · '}
                                 <span className="font-semibold text-foreground">{p.quantidade} pçs</span>
                                 {' · '}
-                                {p.loteCodigo} · tam {p.tamanho} · {p.operacaoNome}
+                                {p.loteCodigo} · tam {p.tamanho}{p.tonalidade ? ` · ${p.tonalidade}` : ''} · {p.operacaoNome}
                               </span>
                               {podeRemoverPack && (
                                 <Button variant="ghost" size="xs" className="text-destructive shrink-0" onClick={() => removePack(p.id)}>

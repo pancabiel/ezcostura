@@ -13,6 +13,7 @@ export interface PackLocal {
   operacaoNome: string;
   quantidade: number;
   tamanho: string;
+  tonalidade?: string;
   registradoPor?: string;
   syncStatus: SyncStatus;
   updatedAt: string;
@@ -32,6 +33,7 @@ export interface PackWire {
   operacaoNome: string;
   quantidade: number;
   tamanho: string;
+  tonalidade?: string;
   registradoPor?: string;
   createdAt?: string;
 }

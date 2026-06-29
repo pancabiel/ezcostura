@@ -124,8 +124,10 @@ async function pushLotes() {
         nome: local.nome,
         descricao: local.descricao,
         finalizado: local.finalizado ?? false,
+        temTonalidades: local.temTonalidades ?? false,
         operacoes: local.operacoes,
         tamanhos: local.tamanhos,
+        tonalidades: local.tonalidades ?? [],
       };
       const saved = local.serverId
         ? await lotesApi.update(local.serverId, payload)
@@ -248,6 +250,7 @@ async function pushPacks() {
         operacaoNome: local.operacaoNome,
         quantidade: local.quantidade,
         tamanho: local.tamanho,
+        tonalidade: local.tonalidade,
         registradoPor: local.registradoPor,
       };
       const saved = await packsApi.create(payload);
@@ -385,7 +388,9 @@ async function pullLotes() {
         id: r.id, serverId: r.id,
         codigo: r.codigo, nome: r.nome, descricao: r.descricao,
         finalizado: r.finalizado ?? false,
+        temTonalidades: r.temTonalidades ?? false,
         operacoes: r.operacoes, tamanhos: r.tamanhos,
+        tonalidades: r.tonalidades ?? [],
         syncStatus: 'synced',
         createdAt: r.createdAt ?? r.updatedAt ?? new Date().toISOString(),
         updatedAt: r.updatedAt ?? new Date().toISOString(),
@@ -395,7 +400,9 @@ async function pullLotes() {
         ...existing,
         codigo: r.codigo, nome: r.nome, descricao: r.descricao,
         finalizado: r.finalizado ?? false,
+        temTonalidades: r.temTonalidades ?? false,
         operacoes: r.operacoes, tamanhos: r.tamanhos,
+        tonalidades: r.tonalidades ?? [],
         createdAt: existing.createdAt ?? r.createdAt ?? r.updatedAt,
         updatedAt: r.updatedAt ?? existing.updatedAt,
       });
@@ -519,7 +526,7 @@ async function reconcilePacks(remote: PackWire[]) {
       operacaoId: r.operacaoId,
       loteCodigo: r.loteCodigo,
       operacaoNome: r.operacaoNome,
-      quantidade: r.quantidade, tamanho: r.tamanho, registradoPor: r.registradoPor,
+      quantidade: r.quantidade, tamanho: r.tamanho, tonalidade: r.tonalidade, registradoPor: r.registradoPor,
       syncStatus: 'synced', updatedAt: new Date().toISOString(),
     });
   }

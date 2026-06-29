@@ -3,6 +3,7 @@ package com.ezcostura.pack.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -20,6 +21,7 @@ public record PackDto(
     @NotBlank String operacaoNome,
     @Min(1) int quantidade,
     @NotBlank String tamanho,
+    @Size(max = 32) String tonalidade,
     UUID registradoPor,
     OffsetDateTime createdAt
 ) {}

@@ -215,6 +215,7 @@ export default function PortalHomePage() {
                                       <span className="text-foreground">
                                         <span className="font-semibold">{p.quantidade}</span> peças
                                         <span className="text-muted-foreground"> · tam {p.tamanho}</span>
+                                        {p.tonalidade && <span className="text-muted-foreground"> · {p.tonalidade}</span>}
                                       </span>
                                     </li>
                                   ))}
