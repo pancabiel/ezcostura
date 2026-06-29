@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import SyncStatusBadge from './SyncStatusBadge';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, canGerir, canVerRelatorios } from '../stores/authStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,8 @@ export default function Layout() {
   const navigate = useNavigate();
 
   const isAdmin = session?.role === 'ADMIN';
+  const gerir = canGerir(session?.role);
+  const relatorios = canVerRelatorios(session?.role);
 
   const logout = () => {
     setSession(null);
@@ -23,13 +25,14 @@ export default function Layout() {
           <h1 className="text-xl font-semibold">ezcostura</h1>
           <nav className="flex gap-1 flex-wrap">
             <NavItem to="/facilitador">Facilitador</NavItem>
-            {isAdmin && <NavItem to="/gerenciador">Gerenciador</NavItem>}
-            {isAdmin && <NavItem to="/lotes">Lotes</NavItem>}
-            {isAdmin && <NavItem to="/operarios">Funcionários</NavItem>}
-            {isAdmin && <NavItem to="/ausencias">Ausências</NavItem>}
-            {isAdmin && <NavItem to="/relatorios">Relatórios</NavItem>}
-            {isAdmin && <NavItem to="/configuracoes/jornada">Jornadas</NavItem>}
-            {isAdmin && <NavItem to="/configuracoes/dias-especiais">Dias especiais</NavItem>}
+            {gerir && <NavItem to="/gerenciador">Gerenciador</NavItem>}
+            {gerir && <NavItem to="/lotes">Lotes</NavItem>}
+            {gerir && <NavItem to="/operarios">Funcionários</NavItem>}
+            {gerir && <NavItem to="/ausencias">Ausências</NavItem>}
+            {relatorios && <NavItem to="/relatorios">Relatórios</NavItem>}
+            {gerir && <NavItem to="/configuracoes/jornada">Jornadas</NavItem>}
+            {gerir && <NavItem to="/configuracoes/dias-especiais">Dias especiais</NavItem>}
+            {isAdmin && <NavItem to="/usuarios">Usuários</NavItem>}
             <NavItem to="/configuracoes/senha">Senha</NavItem>
           </nav>
         </div>

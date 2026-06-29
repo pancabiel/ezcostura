@@ -21,6 +21,7 @@ public class Lote implements Persistable<UUID> {
     private String codigo;
     private String nome;
     private String descricao;
+    private boolean finalizado;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
@@ -46,6 +47,9 @@ public class Lote implements Persistable<UUID> {
 
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+
+    public boolean isFinalizado() { return finalizado; }
+    public void setFinalizado(boolean finalizado) { this.finalizado = finalizado; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

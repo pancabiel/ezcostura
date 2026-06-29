@@ -14,6 +14,7 @@ import JornadaFormPage from './features/jornada/JornadaFormPage';
 import DiasEspeciaisPage from './features/jornada/DiasEspeciaisPage';
 import AusenciasPage from './features/ausencias/AusenciasPage';
 import SenhaPage from './features/configuracoes/SenhaPage';
+import UsuariosListPage from './features/usuarios/UsuariosListPage';
 import PortalLoginPage from './features/portal/PortalLoginPage';
 import PortalHomePage from './features/portal/PortalHomePage';
 import PortalSemanaPage from './features/portal/PortalSemanaPage';
@@ -68,7 +69,7 @@ export default function App() {
         <Route
           path="/gerenciador"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <GerenciadorPage />
             </ProtectedRoute>
           }
@@ -76,7 +77,7 @@ export default function App() {
         <Route
           path="/lotes"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <LotesListPage />
             </ProtectedRoute>
           }
@@ -84,7 +85,7 @@ export default function App() {
         <Route
           path="/lotes/novo"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <LoteFormPage />
             </ProtectedRoute>
           }
@@ -92,7 +93,7 @@ export default function App() {
         <Route
           path="/lotes/:id"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <LoteFormPage />
             </ProtectedRoute>
           }
@@ -100,7 +101,7 @@ export default function App() {
         <Route
           path="/operarios"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <OperariosListPage />
             </ProtectedRoute>
           }
@@ -108,7 +109,7 @@ export default function App() {
         <Route
           path="/operarios/novo"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <OperarioFormPage />
             </ProtectedRoute>
           }
@@ -116,7 +117,7 @@ export default function App() {
         <Route
           path="/operarios/:id"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <OperarioFormPage />
             </ProtectedRoute>
           }
@@ -124,15 +125,23 @@ export default function App() {
         <Route
           path="/relatorios"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <RelatoriosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <UsuariosListPage />
             </ProtectedRoute>
           }
         />
         <Route
           path="/ausencias"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <AusenciasPage />
             </ProtectedRoute>
           }
@@ -140,7 +149,7 @@ export default function App() {
         <Route
           path="/configuracoes/jornada"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <JornadasListPage />
             </ProtectedRoute>
           }
@@ -148,7 +157,7 @@ export default function App() {
         <Route
           path="/configuracoes/jornada/nova"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <JornadaFormPage />
             </ProtectedRoute>
           }
@@ -156,7 +165,7 @@ export default function App() {
         <Route
           path="/configuracoes/jornada/:id"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <JornadaFormPage />
             </ProtectedRoute>
           }
@@ -165,7 +174,7 @@ export default function App() {
         <Route
           path="/configuracoes/dias-especiais"
           element={
-            <ProtectedRoute roles={['ADMIN']}>
+            <ProtectedRoute roles={['ADMIN', 'GERENTE']}>
               <DiasEspeciaisPage />
             </ProtectedRoute>
           }

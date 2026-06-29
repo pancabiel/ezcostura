@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, type Role } from '../../stores/authStore';
 import {
   Card,
   CardContent,
@@ -20,14 +20,14 @@ interface LoginResponse {
   userId: string;
   username: string;
   tenantId: string;
-  role: 'ADMIN' | 'OPERADOR';
+  role: Role;
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
 
-  const [tenantId, setTenantId] = useState('local');
+  const [tenantId, setTenantId] = useState(() => localStorage.getItem('lastTenantId') ?? '');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +41,7 @@ export default function LoginPage() {
       const { data } = await axios.post<LoginResponse>('/api/auth/login', {
         tenantId, username, password,
       });
+      localStorage.setItem('lastTenantId', tenantId);
       setSession(data);
       navigate('/');
     } catch (err) {

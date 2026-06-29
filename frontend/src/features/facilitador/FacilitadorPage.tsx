@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Empty, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
+import { useAuthStore, canGerir } from '../../stores/authStore';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -41,6 +42,7 @@ export default function FacilitadorPage() {
   const [allocTarget, setAllocTarget] = useState<OperarioLocal | null>(null);
   const [now, setNow] = useState<Date>(new Date());
   const confirm = useConfirm();
+  const podeRemoverPack = canGerir(useAuthStore((s) => s.session?.role));
 
   const removePack = async (id: string) => {
     const ok = await confirm({
@@ -215,9 +217,11 @@ export default function FacilitadorPage() {
                                 {' · '}
                                 {p.loteCodigo} · tam {p.tamanho} · {p.operacaoNome}
                               </span>
-                              <Button variant="ghost" size="xs" className="text-destructive shrink-0" onClick={() => removePack(p.id)}>
-                                remover
-                              </Button>
+                              {podeRemoverPack && (
+                                <Button variant="ghost" size="xs" className="text-destructive shrink-0" onClick={() => removePack(p.id)}>
+                                  remover
+                                </Button>
+                              )}
                             </li>
                           ))}
                         </ul>

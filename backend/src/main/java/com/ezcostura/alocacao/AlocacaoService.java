@@ -54,10 +54,10 @@ public class AlocacaoService {
         a.markNew();
         a.setCreatedAt(OffsetDateTime.now());
         AlocacaoMapper.apply(dto, a);
-        // Trava de horário (item 1): só o ADMIN (master) escolhe o horário de início.
-        // O OPERADOR (chão de fábrica) não pode retroagir/forjar — o servidor carimba
-        // a hora atual da fábrica. Defesa real, independente da trava de UI.
-        if (autor != Role.ADMIN) {
+        // Trava de horário (item 1): só o master (ADMIN/GERENTE) escolhe o horário de
+        // início. O chão de fábrica (SUPERVISOR/OPERADOR) não pode retroagir/forjar — o
+        // servidor carimba a hora atual da fábrica. Defesa real, independente da trava de UI.
+        if (!isMaster(autor)) {
             a.setHorarioInicio(LocalTime.now(fabricaZone));
         }
         return AlocacaoMapper.toDto(repository.save(a));
@@ -69,12 +69,18 @@ public class AlocacaoService {
             .orElseThrow(() -> new AlocacaoNotFoundException(id));
         LocalTime horarioOriginal = a.getHorarioInicio();
         AlocacaoMapper.apply(dto, a);
-        // OPERADOR pode trocar lote/operação (caso de uso do chão de fábrica), mas não
-        // editar o horário de início já registrado — preserva o valor original.
-        if (autor != Role.ADMIN) {
+        // O chão de fábrica (SUPERVISOR/OPERADOR) pode trocar lote/operação (caso de uso
+        // do chão de fábrica), mas não editar o horário de início já registrado — preserva
+        // o valor original. O master (ADMIN/GERENTE) edita livremente.
+        if (!isMaster(autor)) {
             a.setHorarioInicio(horarioOriginal);
         }
         return AlocacaoMapper.toDto(repository.save(a));
+    }
+
+    /** Master = planejador (gerenciador): escolhe/edita o horário de início livremente. */
+    private static boolean isMaster(Role autor) {
+        return autor == Role.ADMIN || autor == Role.GERENTE;
     }
 
     @Transactional

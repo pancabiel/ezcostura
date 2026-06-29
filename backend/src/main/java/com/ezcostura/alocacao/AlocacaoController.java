@@ -28,7 +28,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/alocacoes")
-@PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
 public class AlocacaoController {
 
     private final AlocacaoService service;

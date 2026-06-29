@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/operarios")
-@PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
 public class OperarioController {
 
     private final OperarioService service;
@@ -44,20 +44,20 @@ public class OperarioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<OperarioDto> create(@Valid @RequestBody OperarioDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.create(dto));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<OperarioDto> update(@PathVariable UUID id, @Valid @RequestBody OperarioDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<ResponseEntity<Void>> delete(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.delete(id);
@@ -66,7 +66,7 @@ public class OperarioController {
     }
 
     @PostMapping("/{id}/pin")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public Mono<Void> setPin(@PathVariable UUID id, @Valid @RequestBody SetPinRequest request) {
         return ReactiveTenantHelper.runBlocking(() -> {
@@ -76,7 +76,7 @@ public class OperarioController {
     }
 
     @DeleteMapping("/{id}/pin")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<ResponseEntity<Void>> removePin(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.removePin(id);

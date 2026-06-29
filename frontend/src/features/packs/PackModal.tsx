@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { packsRepo } from './packsRepo';
 import { alocacoesRepo } from '../alocacoes/alocacoesRepo';
+import { selectableLotes } from '../lotes/lotesRepo';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
 import { getSession } from '../../stores/authStore';
 import { getDb } from '../../db/dexie';
@@ -72,6 +73,14 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
   }, [operario, operarioId, data, jornadas, diasEspeciais]);
 
   const selectedLote = useMemo(() => lotes.find((l) => l.id === loteId), [lotes, loteId]);
+
+  // Lotes oferecidos no select: só os ativos, do mais recente ao mais antigo.
+  // Mantém o lote já selecionado visível mesmo se finalizado (pré-seleção da alocação vigente).
+  const lotesSelecionaveis = useMemo(() => {
+    const sel = selectableLotes(lotes);
+    if (loteId && selectedLote && !sel.some((l) => l.id === loteId)) return [selectedLote, ...sel];
+    return sel;
+  }, [lotes, loteId, selectedLote]);
 
   // Para cada operação do lote selecionado, descobre se já há alocação para esse operário no dia.
   const operacoesComAloc = useMemo(() => {
@@ -243,7 +252,7 @@ export default function PackModal({ operarioId, operarioNome, data, alocacoes, l
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {lotes.map((l) => (
+                    {lotesSelecionaveis.map((l) => (
                       <SelectItem key={l.id} value={l.id}>{l.codigo} — {l.nome}</SelectItem>
                     ))}
                   </SelectGroup>

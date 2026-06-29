@@ -23,6 +23,7 @@ final class LoteMapper {
             lote.getCodigo(),
             lote.getNome(),
             lote.getDescricao(),
+            lote.isFinalizado(),
             ops,
             tams,
             lote.getCreatedAt(),
@@ -34,6 +35,7 @@ final class LoteMapper {
         target.setCodigo(dto.codigo());
         target.setNome(dto.nome());
         target.setDescricao(dto.descricao());
+        target.setFinalizado(dto.finalizado());
 
         target.getOperacoes().clear();
         for (OperacaoDto op : dto.operacoes()) {

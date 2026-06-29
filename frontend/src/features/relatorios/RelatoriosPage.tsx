@@ -54,6 +54,15 @@ const fmtDayMonth = (iso: string) => {
   const [, m, d] = iso.split('-');
   return `${d}/${m}`;
 };
+// Horas decimais → "5h 30m" (ex.: 5.5 → "5h 30m", 5 → "5h", 0.5 → "30m").
+const fmtHoras = (horas: number) => {
+  const totalMin = Math.round(horas * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
 const overlapMin = (a1: number, a2: number, b1: number, b2: number) =>
   Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
 
@@ -699,43 +708,46 @@ export default function RelatoriosPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {detalheDia.map((row) => (
-              <div key={row.operarioId} className="border rounded-md p-3">
-                <div className="flex items-center justify-between mb-2 gap-2">
+              <div key={row.operarioId} className="border rounded-md p-4 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1 sm:gap-2">
                   <h4 className="font-semibold truncate flex items-center gap-2">
                     {row.operarioNome}
                     {row.ausenciaTipo && (
                       <Badge variant="secondary" className="font-normal">{row.ausenciaTipo}</Badge>
                     )}
                   </h4>
-                  <span className="text-sm whitespace-nowrap flex items-center gap-1">
-                    <span className="font-mono">{row.totalProduzido}</span>
-                    <span className="text-muted-foreground text-xs"> peças</span>
-                    <Badge className={cn('ml-1', pctBadge(row.totalPct))}>{fmtPct(row.totalPct)}%</Badge>
-                  </span>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-4 sm:gap-2">
                   {/* Colunas Meta | Produção | % lado a lado, sem total somado de metas. */}
-                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {/* Cabeçalho de colunas só no desktop; no celular cada valor leva seu rótulo inline. */}
+                  <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] uppercase tracking-wide text-muted-foreground">
                     <span />
                     <span className="text-right">Meta</span>
                     <span className="text-right">Produção</span>
                     <span className="text-right">%</span>
                   </div>
                   {row.itens.map((it) => (
-                    <div key={it.alocId} className="flex flex-col gap-1">
-                      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 text-sm">
-                        <span className="text-foreground min-w-0 truncate">
+                    <div key={it.alocId} className="flex flex-col gap-2 sm:gap-1">
+                      <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_auto_auto] sm:items-center gap-1.5 sm:gap-x-3 text-sm">
+                        <span className="text-foreground min-w-0 sm:truncate">
                           <span className="font-mono">{it.horario}</span>
                           <span className="text-muted-foreground"> · </span>
                           {it.loteCodigo} · {it.operacao}
                           <span className="text-muted-foreground"> · </span>
-                          <span className="text-muted-foreground">{it.horas.toFixed(1)}h</span>
+                          <span className="text-muted-foreground">{fmtHoras(it.horas)}</span>
                         </span>
-                        <span className="font-mono text-right text-muted-foreground">{it.meta}</span>
-                        <span className="font-mono text-right font-semibold text-foreground">{it.produzido}</span>
-                        <span className="text-right">
-                          <Badge className={cn(pctBadge(it.pct))}>{fmtPct(it.pct)}%</Badge>
-                        </span>
+                        {/* No celular vira uma linha flex com rótulos; no desktop os filhos entram direto no grid (sm:contents). */}
+                        <div className="flex items-center gap-4 sm:contents">
+                          <span className="font-mono text-muted-foreground sm:text-right">
+                            <span className="sm:hidden text-[10px] uppercase tracking-wide">Meta </span>{it.meta}
+                          </span>
+                          <span className="font-mono font-semibold text-foreground sm:text-right">
+                            <span className="sm:hidden text-[10px] uppercase tracking-wide text-muted-foreground">Produção </span>{it.produzido}
+                          </span>
+                          <span className="ml-auto sm:ml-0 sm:text-right">
+                            <Badge className={cn(pctBadge(it.pct))}>{fmtPct(it.pct)}%</Badge>
+                          </span>
+                        </div>
                       </div>
                       <div className="bg-muted rounded-full h-2 overflow-hidden">
                         <div
@@ -745,6 +757,10 @@ export default function RelatoriosPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t">
+                  <span className="text-xs text-muted-foreground">Meta total do dia</span>
+                  <Badge className={cn(pctBadge(row.totalPct))}>{fmtPct(row.totalPct)}%</Badge>
                 </div>
               </div>
             ))}

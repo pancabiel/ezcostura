@@ -21,9 +21,13 @@ export interface LoteLocal {
   codigo: string;
   nome: string;
   descricao?: string;
+  /** Quando true, o lote foi concluído: não aparece mais nos selects de facilitador/gerenciador. Reversível. */
+  finalizado: boolean;
   operacoes: Operacao[];
   tamanhos: Tamanho[];
   syncStatus: SyncStatus;
+  /** ISO timestamp — criação (usado para ordenar os selects do mais recente ao mais antigo). */
+  createdAt?: string;
   /** ISO timestamp — last local mutation. */
   updatedAt: string;
   /** Last sync error message, if any. */
@@ -38,6 +42,7 @@ export interface LoteWire {
   codigo: string;
   nome: string;
   descricao?: string;
+  finalizado: boolean;
   operacoes: Operacao[];
   tamanhos: Tamanho[];
   createdAt?: string;

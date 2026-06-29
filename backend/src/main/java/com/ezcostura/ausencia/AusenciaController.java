@@ -34,7 +34,7 @@ public class AusenciaController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
     public Mono<List<AusenciaDto>> list(
         @RequestParam(value = "de", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
         @RequestParam(value = "ate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate,
@@ -50,26 +50,26 @@ public class AusenciaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
     public Mono<AusenciaDto> findById(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> service.findById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<AusenciaDto> create(@Valid @RequestBody AusenciaDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.create(dto));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<AusenciaDto> update(@PathVariable UUID id, @Valid @RequestBody AusenciaDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<ResponseEntity<Void>> delete(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.delete(id);

@@ -123,6 +123,7 @@ async function pushLotes() {
         codigo: local.codigo,
         nome: local.nome,
         descricao: local.descricao,
+        finalizado: local.finalizado ?? false,
         operacoes: local.operacoes,
         tamanhos: local.tamanhos,
       };
@@ -383,14 +384,19 @@ async function pullLotes() {
       await db.lotes.add({
         id: r.id, serverId: r.id,
         codigo: r.codigo, nome: r.nome, descricao: r.descricao,
+        finalizado: r.finalizado ?? false,
         operacoes: r.operacoes, tamanhos: r.tamanhos,
-        syncStatus: 'synced', updatedAt: r.updatedAt ?? new Date().toISOString(),
+        syncStatus: 'synced',
+        createdAt: r.createdAt ?? r.updatedAt ?? new Date().toISOString(),
+        updatedAt: r.updatedAt ?? new Date().toISOString(),
       });
     } else if (existing.syncStatus === 'synced') {
       await db.lotes.put({
         ...existing,
         codigo: r.codigo, nome: r.nome, descricao: r.descricao,
+        finalizado: r.finalizado ?? false,
         operacoes: r.operacoes, tamanhos: r.tamanhos,
+        createdAt: existing.createdAt ?? r.createdAt ?? r.updatedAt,
         updatedAt: r.updatedAt ?? existing.updatedAt,
       });
     }

@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 
-export type Role = 'ADMIN' | 'OPERADOR';
+export type Role = 'ADMIN' | 'GERENTE' | 'SUPERVISOR' | 'OPERADOR';
+
+/** Pode gerir cadastros/configurações (gerenciador, lotes, funcionários, jornadas…). */
+export function canGerir(role: Role | undefined): boolean {
+  return role === 'ADMIN' || role === 'GERENTE';
+}
+
+/** Pode ver relatórios. */
+export function canVerRelatorios(role: Role | undefined): boolean {
+  return canGerir(role);
+}
 
 export interface AuthSession {
   accessToken: string;

@@ -74,7 +74,8 @@ The backend is **WebFlux on the outside, JDBC on the inside**. Controllers retur
 - BCrypt cost 12. CSRF disabled (no cookies).
 - CORS allowlist enforced; `CorsConfig` throws on startup if `*` is configured.
 - Frontend `lib/axios.ts` injects `Authorization` header and on 401 calls `/api/auth/refresh` once (de-duped via a shared `refreshing` promise) before logging out.
-- Roles: `ADMIN` (full access), `OPERADOR` (only the shop-floor screen), and `OPERARIO_SELF` (operário portal — sees only their own data; see ADR-0006).
+- Roles: `ADMIN` (full access, incl. user management), `GERENTE` (everything except user management), `SUPERVISOR` (facilitador only — read-only: no reports, and cannot delete packs), `OPERADOR` (only the shop-floor screen), and `OPERARIO_SELF` (operário portal — sees only their own data; see ADR-0006 and ADR-0007).
+- User management (`/api/usuarios`, `UsuarioController`) is ADMIN-only and can only create/manage `GERENTE`/`SUPERVISOR`; it is online-only (not a Dexie-synced entity).
 
 ### Spring Data JDBC aggregate gotcha
 This bit the project hard — see `V8` and `V9` migrations:

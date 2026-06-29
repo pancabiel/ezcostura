@@ -22,7 +22,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/lotes")
-@PreAuthorize("hasRole('ADMIN')")
 public class LoteController {
 
     private final LoteService service;
@@ -31,28 +30,35 @@ public class LoteController {
         this.service = service;
     }
 
+    // Leitura é liberada para todos os papéis internos: o facilitador (e o sync
+    // global) precisam dos lotes para rotular alocações e registrar packs.
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
     public Mono<List<LoteDto>> findAll() {
         return ReactiveTenantHelper.runBlocking(service::findAll);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
     public Mono<LoteDto> findById(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> service.findById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<LoteDto> create(@Valid @RequestBody LoteDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.create(dto));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<LoteDto> update(@PathVariable UUID id, @Valid @RequestBody LoteDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<ResponseEntity<Void>> delete(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.delete(id);

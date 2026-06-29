@@ -76,19 +76,35 @@ function LoteRow({ lote }: { lote: LoteLocal }) {
     await lotesRepo.markDeleted(lote.id);
   };
 
+  const toggleFinalizado = async () => {
+    if (!lote.finalizado) {
+      const ok = await confirm({
+        title: 'Finalizar lote',
+        message: `Finalizar lote ${lote.codigo}? Ele deixa de aparecer no facilitador e no gerenciador. Você pode reabrir depois.`,
+        confirmLabel: 'Finalizar',
+      });
+      if (!ok) return;
+    }
+    await lotesRepo.setFinalizado(lote.id, !lote.finalizado);
+  };
+
   return (
     <li className="flex items-center justify-between p-4">
       <Link to={`/lotes/${lote.id}`} className="flex-1 min-w-0">
         <div className="flex items-baseline gap-3">
           <span className="font-mono text-sm text-muted-foreground">{lote.codigo}</span>
           <span className="font-medium truncate">{lote.nome}</span>
+          {lote.finalizado && <Badge variant="outline">finalizado</Badge>}
           <SyncBadge status={lote.syncStatus} />
         </div>
         {lote.descricao && (
           <p className="text-sm text-muted-foreground truncate mt-1">{lote.descricao}</p>
         )}
       </Link>
-      <Button variant="ghost" size="sm" className="ml-4 text-destructive" onClick={handleDelete}>
+      <Button variant="ghost" size="sm" className="ml-4" onClick={toggleFinalizado}>
+        {lote.finalizado ? 'Reabrir' : 'Finalizar'}
+      </Button>
+      <Button variant="ghost" size="sm" className="ml-1 text-destructive" onClick={handleDelete}>
         Remover
       </Button>
     </li>

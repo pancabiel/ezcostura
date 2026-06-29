@@ -30,6 +30,8 @@ actually use the word on the shop floor.
 
 | Role | Meaning |
 | ---- | ------- |
-| **ADMIN** | Full access to the admin app. |
+| **ADMIN** | Full access to the admin app, including user management (the sole owner account). |
+| **GERENTE** | Manager: everything ADMIN can do **except** managing users. |
+| **SUPERVISOR** | Shift supervisor: the facilitador screen **plus** reports, nothing else. |
 | **OPERADOR** | Shop-floor screen only (facilitador). |
 | **OPERARIO_SELF** | An operário authenticated via the portal, seeing only their own data. |

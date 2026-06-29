@@ -6,6 +6,7 @@ import com.ezcostura.jornada.JornadaInUseException;
 import com.ezcostura.lote.LoteNotFoundException;
 import com.ezcostura.operario.OperarioNotFoundException;
 import com.ezcostura.pack.PackNotFoundException;
+import com.ezcostura.usuario.UsuarioNotFoundException;
 import io.sentry.Sentry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,8 @@ public class GlobalExceptionHandler {
         OperarioNotFoundException.class,
         AlocacaoNotFoundException.class,
         AusenciaNotFoundException.class,
-        PackNotFoundException.class
+        PackNotFoundException.class,
+        UsuarioNotFoundException.class
     })
     public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error(HttpStatus.NOT_FOUND, ex.getMessage()));

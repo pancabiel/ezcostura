@@ -13,6 +13,7 @@ public record LoteDto(
     @NotBlank String codigo,
     @NotBlank String nome,
     String descricao,
+    boolean finalizado,
     @NotNull @Valid List<OperacaoDto> operacoes,
     @NotNull @Valid List<TamanhoDto> tamanhos,
     OffsetDateTime createdAt,

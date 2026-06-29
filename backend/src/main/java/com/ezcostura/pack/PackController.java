@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/packs")
-@PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
 public class PackController {
 
     private final PackService service;
@@ -56,7 +56,7 @@ public class PackController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<ResponseEntity<Void>> delete(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.delete(id);

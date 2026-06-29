@@ -31,26 +31,26 @@ public class DiaEspecialController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OPERADOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR', 'OPERADOR')")
     public Mono<List<DiaEspecialDto>> findAll() {
         return ReactiveTenantHelper.runBlocking(service::findAll);
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<DiaEspecialDto> create(@Valid @RequestBody DiaEspecialDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.create(dto));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<DiaEspecialDto> update(@PathVariable UUID id, @Valid @RequestBody DiaEspecialDto dto) {
         return ReactiveTenantHelper.runBlocking(() -> service.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     public Mono<ResponseEntity<Void>> delete(@PathVariable UUID id) {
         return ReactiveTenantHelper.runBlocking(() -> {
             service.delete(id);

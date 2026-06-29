@@ -14,6 +14,7 @@ accepted; to reverse a decision, add a new ADR that supersedes the old one.
 | 0004 | Working around the Spring Data JDBC delete-reinsert quirk | ✅ accepted |
 | 0005 | Stateless JWT with refresh-token rotation | ✅ accepted |
 | 0006 | Operário PIN/CPF auth + portal | ✅ accepted |
+| 0007 | GERENTE + SUPERVISOR roles & admin-only user management | ✅ accepted |
 
 ## Backlog (capture opportunistically)
 

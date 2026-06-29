@@ -4,7 +4,8 @@ import { getDb } from '../../db/dexie';
 import { alocacoesRepo } from './alocacoesRepo';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { resolverJornadaEfetiva } from '../jornada/jornadaRepo';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, canGerir } from '../../stores/authStore';
+import { selectableLotes } from '../lotes/lotesRepo';
 import type { AlocacaoLocal } from '../../types/alocacao';
 import type { LoteLocal } from '../../types/lote';
 import {
@@ -46,9 +47,10 @@ export default function AlocacaoModal({
   operarioId, operarioNome, data, alocacao, defaultHorario,
   contexto = 'gerenciador', onClose,
 }: Props) {
-  // Master (ADMIN) escolhe o horário livremente; o funcionário comum (OPERADOR) recebe
-  // o horário travado — o servidor também carimba/preserva (defesa real, ver AlocacaoService).
-  const isMaster = useAuthStore((s) => s.session?.role) === 'ADMIN';
+  // Master (ADMIN/GERENTE) escolhe o horário livremente; o chão de fábrica (SUPERVISOR/
+  // OPERADOR) recebe o horário travado — o servidor também carimba/preserva (defesa real,
+  // ver AlocacaoService).
+  const isMaster = canGerir(useAuthStore((s) => s.session?.role));
 
   const lotesRaw = useLiveQuery(() => getDb().lotes.toArray(), []);
   const jornadasRaw = useLiveQuery(() => getDb().jornadas.toArray(), []);
@@ -120,6 +122,14 @@ export default function AlocacaoModal({
     () => lotes.find((l) => l.id === loteId),
     [lotes, loteId],
   );
+
+  // Lotes oferecidos no select: só os ativos, do mais recente ao mais antigo.
+  // Mantém o lote já selecionado visível mesmo se finalizado (edição de alocação antiga).
+  const lotesSelecionaveis = useMemo(() => {
+    const sel = selectableLotes(lotes);
+    if (loteId && lote && !sel.some((l) => l.id === loteId)) return [lote, ...sel];
+    return sel;
+  }, [lotes, loteId, lote]);
 
   useEffect(() => {
     if (!lote) return;
@@ -230,7 +240,7 @@ export default function AlocacaoModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {lotes.map((l) => (
+                    {lotesSelecionaveis.map((l) => (
                       <SelectItem key={l.id} value={l.id}>
                         {l.codigo} — {l.nome}
                       </SelectItem>
