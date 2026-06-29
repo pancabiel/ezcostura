@@ -13,6 +13,7 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -74,7 +75,12 @@ public class OperarioLoginRateLimitFilter implements WebFilter {
             return (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
         }
         InetSocketAddress remote = request.getRemoteAddress();
-        return remote != null ? remote.getAddress().getHostAddress() : "unknown";
+        if (remote == null) {
+            return "unknown";
+        }
+        // getAddress() é null quando o endereço não foi resolvido; cai para o hostString.
+        InetAddress addr = remote.getAddress();
+        return addr != null ? addr.getHostAddress() : remote.getHostString();
     }
 
     private Mono<Void> tooManyRequests(ServerWebExchange exchange) {
